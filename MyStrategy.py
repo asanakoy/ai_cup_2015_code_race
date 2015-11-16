@@ -6,15 +6,28 @@ from model.TileType import TileType
 from math import *
 from pprint import pprint
 from random import random
-# import numpy as np
+import PathFinder
 
 class MyStrategy:
     SPEED_HEAP_SIZE = 20
     GO_BACK_CD = 100
+
     def __init__(self):
         self.prev_waypoint = (-1, -1)
         self.go_back_cd = MyStrategy.GO_BACK_CD # need to get positive speed at least 0.75
         self.go_back = 0
+        self.check_points = []
+        self.turn_matrix = []
+        self.next_cp_index = 0
+
+    def preproc(self, world):
+        if len(world.players) == 2:
+            print 'WARNING 2x2 game!'
+            self.check_points = world.waypoints
+            self.turn_matrix = [world.height * [0] for _ in xrange(world.width)]  # JUST DUMMY
+        else:
+            (self.check_points, self.turn_matrix) = \
+                PathFinder.find_check_points(world.tiles_x_y, world.waypoints, world.width, world.height)
 
     def move(self, me, world, game, move):
         """
@@ -28,20 +41,36 @@ class MyStrategy:
             print 'world %d x %d' % (world.width, world.height)
             pprint(map(list, zip(*world.tiles_x_y)))
             print world.waypoints
+            print get_main_direction(me)
+            print '====================='
+            self.preproc(world)
+            pprint(self.check_points)
+            pprint(self.turn_matrix)
 
         cur_tile = (floor(me.x / game.track_tile_size),  floor(me.y / game.track_tile_size))
         print 'Tick %d %d, %d' % (world.tick, cur_tile[0], cur_tile[1])
         # print 'Nitro:', me.nitro_charge_count
         print 'Angular speed:', me.angular_speed
-        next_wp_type = world.tiles_x_y[me.next_waypoint_x][me.next_waypoint_y]
-        if self.prev_waypoint != (me.next_waypoint_x, me.next_waypoint_y):
-            print 'wp: %s(%d) %d %d' % (tileTypeToStr(next_wp_type), next_wp_type, me.next_waypoint_x, me.next_waypoint_y)
-            self.prev_waypoint = (me.next_waypoint_x, me.next_waypoint_y)
+
+        if cur_tile == self.check_points[self.next_cp_index]:
+            self.next_cp_index += 1
+            if self.next_cp_index >= len(self.check_points):
+                self.next_cp_index = 0
+            print 'Cp passed!'
+
+        print 'self.next_cp_index:', self.next_cp_index
+        next_cp_x = self.check_points[self.next_cp_index][0]
+        next_cp_y = self.check_points[self.next_cp_index][1]
+
+        next_wp_type = world.tiles_x_y[next_cp_x][next_cp_y]
+        if self.prev_waypoint != (next_cp_x, next_cp_y):
+            print 'wp: %s(%d) %d %d' % (tileTypeToStr(next_wp_type), next_wp_type, next_cp_x, next_cp_y)
+            self.prev_waypoint = (next_cp_x, next_cp_y)
 
         ##################
 
-        next_wp_X = (me.next_waypoint_x + 0.5) * game.track_tile_size
-        next_wp_Y = (me.next_waypoint_y + 0.5) * game.track_tile_size
+        next_wp_X = (next_cp_x + 0.5) * game.track_tile_size
+        next_wp_Y = (next_cp_y + 0.5) * game.track_tile_size
 
         cornerTileOffset = 0.25 * game.track_tile_size
 
@@ -90,8 +119,8 @@ class MyStrategy:
 
         main_direction = get_main_direction(me)
         if main_direction != (0, 0) and me.angular_speed < 5.0:
-            diff_with_next_cp_x = me.next_waypoint_x - cur_tile[0]
-            diff_with_next_cp_y = me.next_waypoint_y - cur_tile[1]
+            diff_with_next_cp_x = next_cp_x - cur_tile[0]
+            diff_with_next_cp_y = next_cp_y - cur_tile[1]
             if (main_direction[0] == sign(diff_with_next_cp_x) and
                     main_direction[1] == sign(diff_with_next_cp_y) and
                     not have_obstacles(cur_tile, main_direction, world, 2)):
@@ -132,7 +161,7 @@ def get_direction_vector(car):
 def get_main_direction(car):
     PAD = pi/18
     A = -(pi/4 - PAD)
-    B = (pi/4 - PAD)    
+    B = (pi/4 - PAD)
 
     if A <= car.angle <= B:
         return (1, 0)
