@@ -26,7 +26,7 @@ class MyStrategy:
         if len(world.players) == 2:
             print 'WARNING 2x2 game!'
             self.check_points = world.waypoints
-            self.turn_matrix = [world.height * [0] for _ in xrange(world.width)]  # JUST DUMMY
+            self.check_points_directions = [world.height * [0] for _ in xrange(world.width)]  # JUST DUMMY
         else:
             (self.check_points, self.check_points_directions) = \
                 PathFinder.find_check_points(world.tiles_x_y, world.waypoints, world.width, world.height)
