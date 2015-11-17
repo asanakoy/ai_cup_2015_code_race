@@ -108,7 +108,7 @@ class MyStrategy:
             self.go_back -= 1
             move.wheel_turn = 0
             move.engine_power = -1.0
-            if driving_direction != PathFinder.UNKNOWN_DIRECTION and self.go_back > 30:
+            if driving_direction != PathFinder.UNKNOWN_DIRECTION and self.go_back > 10:
                 move.wheel_turn = -sign(angle_to_ground_point)
             return
         else:
@@ -120,7 +120,7 @@ class MyStrategy:
         move.engine_power = 1.0
 
         driving_direction_vector = tuple(PathFinder.get_vector_by_direction(driving_direction))
-        if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3:
+        if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
                 move.use_nitro = True
         elif driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
                 and me.angular_speed < 2.0:

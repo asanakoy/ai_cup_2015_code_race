@@ -7,7 +7,7 @@ from pprint import pprint
 from model.Direction import Direction
 
 
-def find_path(graph, s, end_point):
+def find_path(graph, s, prev, end_point):
     n = len(graph)
     q = deque()
     q.appendleft(s)
@@ -15,6 +15,9 @@ def find_path(graph, s, end_point):
     parent = n * [False]
     d = n * [0]
     visited[s] = True
+    if prev != -1:
+        visited[prev] = True
+
     parent[s] = -1
 
     end_found = False
@@ -65,7 +68,14 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
             next_wp_index = i + 1
         else:
             next_wp_index = 0
-        path = find_path(graph, sub2ind(waypoints[i][0], waypoints[i][1], x_size, y_size),
+        prev = -1
+        if check_points:
+            if list(waypoints[i]) != list(check_points[-1]):
+                prev = sub2ind(check_points[-1][0], check_points[-1][1], x_size, y_size)
+            elif len(check_points) > 1:
+                prev = sub2ind(check_points[-2][0], check_points[-2][1], x_size, y_size)
+
+        path = find_path(graph, sub2ind(waypoints[i][0], waypoints[i][1], x_size, y_size), prev,
                          sub2ind(waypoints[next_wp_index][0], waypoints[next_wp_index][1], x_size, y_size))
 
         cps = []
