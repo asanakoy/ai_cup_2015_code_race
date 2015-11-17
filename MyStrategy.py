@@ -86,6 +86,14 @@ class MyStrategy:
                          driving_direction_vector)
             next_point_X += offset[0] * cornerTileOffset
             next_point_Y += offset[1] * cornerTileOffset
+        else:
+            next_next_cp_index = self.next_cp_index + 1 if self.next_cp_index < len(self.check_points) - 1 else 0
+            if self.is_turn(next_next_cp_index):  # pre-turn
+                offset = map(lambda a, b: -a + b,
+                         PathFinder.get_vector_by_direction(self.check_points_directions[next_next_cp_index]),
+                         driving_direction_vector)
+                next_point_X += offset[0] * cornerTileOffset
+                next_point_Y += offset[1] * cornerTileOffset
 
 
         angle_to_ground_point = me.get_angle_to(next_point_X, next_point_Y)
