@@ -4,14 +4,7 @@ from model.TileType import TileType
 from math import *
 from collections import deque
 from pprint import pprint
-
-
-class TurnType:
-    NONE = 0
-    RIGHT = 1
-    BOTTOM = 2
-    LEFT = 3
-    TOP = 4
+from model.Direction import Direction
 
 
 def find_path(graph, s, end_point):
@@ -61,7 +54,7 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
 
 
 
-    turn_matrix = [y_size * [0] for _ in range(x_size)]
+    # turn_matrix = [y_size * [0] for _ in range(x_size)]
 
     check_points = []
     check_points_indices_set = set()
@@ -81,30 +74,32 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
             prev_ind = path[k - 1] if k > 0 else None
             next_ind = path[k + 1] if k < len(path) - 1 else None
 
-            if prev_ind is not None and next_ind is not None:
+            if prev_ind is not None:
                 prev_tile = ind2sub(prev_ind, x_size, y_size)
+            if next_ind is not None:
                 next_tile = ind2sub(next_ind, x_size, y_size)
+
+            if prev_ind is not None and next_ind is not None: # point in the middle
                 x_diff = abs(prev_tile[0] - next_tile[0])
                 y_diff = abs(prev_tile[1] - next_tile[1])
-                if x_diff and y_diff:  # means change driving direction
-                    if prev_ind not in check_points_indices_set:
-                        check_points_indices_set.add(prev_ind)
+                if (x_diff and y_diff) or list(tile) in waypoints:  # means change driving direction or wp in the middle of path
+
+                    if len(cps) >= 2 and cps[-2] != prev_tile and cps[-1] != prev_tile:
                         cps.append(prev_tile)
 
-                    if path[k] not in check_points_indices_set:
-                        check_points_indices_set.add(path[k])
-                        cps.append(tile)
-                        turn_matrix[tile[0]][tile[1]] = 1
+                    if not cps or cps[-1] != tile:
+                        cps.append(tile)  # could repeat
 
-                    if next_ind not in check_points_indices_set:
-                        check_points_indices_set.add(next_ind)
-                        cps.append(next_tile)
+                    cps.append(next_tile)
 
-            elif list(tile) in waypoints and path[k] not in check_points_indices_set:
-                check_points_indices_set.add(path[k])
-                cps.append(tile)
-                # not assigned turn_matrix[tile[0]][tile[1]] = 1
-                # TODO check all waypoints on having turns and mark them
+            elif list(tile) in waypoints:  #first or last point in path (it is always wp)
+                if prev_ind is not None and prev_tile != cps[-1] and (len(cps) < 2 or prev_tile != cps[-2]):
+                    check_points_indices_set.add(prev_tile)
+                    cps.append(prev_tile)
+                if not cps or cps[-1] != tile:
+                    cps.append(tile)
+                if next_ind is not None:
+                    cps.append(next_tile)
 
         if check_points and cps and check_points[-1] == cps[0]:
             del check_points[-1]
@@ -114,8 +109,65 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
     assert(len(check_points) > 1)
     # assert(check_points[0] == check_points[-1])
     # del check_points[-1]
+    if check_points[0] == check_points[-1]:
+        del check_points[-1]
 
-    return check_points, turn_matrix
+    check_points_directions = calculate_check_points_directions(check_points)
+
+    return check_points, check_points_directions
+
+
+UNKNOWN_DIRECTION = -1
+
+def direction_to_str(direction):
+    if direction == Direction.LEFT:
+        return 'LEFT'
+    elif direction == Direction.RIGHT:
+        return 'RIGHT'
+    elif direction == Direction.DOWN:
+        return 'DOWN'
+    elif direction == Direction.UP:
+        return 'UP'
+    else:
+        return 'UNKNOWN'
+
+
+def get_direction_by_vector(vector):
+    if vector == [-1, 0]:
+        return Direction.LEFT
+    elif vector == [1, 0]:
+        return Direction.RIGHT
+    elif vector == [0, 1]:
+        return Direction.DOWN
+    elif vector == [0, -1]:
+        return Direction.UP
+    else:
+        return UNKNOWN_DIRECTION
+
+
+def get_vector_by_direction(direction):
+    if direction == Direction.LEFT:
+        return [-1, 0]
+    elif direction == Direction.RIGHT:
+        return [1, 0]
+    elif direction == Direction.DOWN:
+        return [0, 1]
+    elif direction == Direction.UP:
+        return [0, -1]
+    else:
+        return [0, 0]  # UNKNOWN_DIRECTION
+
+
+def calculate_check_points_directions(check_points):
+    directions = len(check_points) * [-1]
+    for i in xrange(len(check_points)):
+        next = check_points[i + 1 if i < len(check_points) - 1 else 0]
+        vector = map(lambda x, y: sign(x - y), next, check_points[i])
+        directions[i] = get_direction_by_vector(vector)
+    return directions
+
+
+
 
 
 def find_path_test():
@@ -205,7 +257,12 @@ def sub2ind(x, y, x_size, y_size):
     return x * y_size + y
 
 
+def sign(a):
+    return (a > 0) - (a < 0)
+
+
 if __name__ == "__main__":
-    check_points, turn_matrix = find_path_test()
+    check_points, directions = find_path_test()
     pprint(check_points)
-    pprint(turn_matrix)
+    pprint(map(lambda d: direction_to_str(d), directions))
+
