@@ -108,28 +108,26 @@ class MyStrategy:
             self.go_back -= 1
             move.wheel_turn = 0
             move.engine_power = -1.0
-            if driving_direction != PathFinder.UNKNOWN_DIRECTION:
+            if driving_direction != PathFinder.UNKNOWN_DIRECTION and self.go_back > 30:
                 move.wheel_turn = -sign(angle_to_ground_point)
             return
         else:
             self.go_back_cd = max(0, self.go_back_cd - 1)
 
-        if speed_sign >= 0:
+        if speed_sign >= 0 and world.tick > game.initial_freeze_duration_ticks + 50:
             move.wheel_turn = (angle_to_ground_point * 32.0 / pi)
 
         move.engine_power = 1.0
 
-
         driving_direction_vector = tuple(PathFinder.get_vector_by_direction(driving_direction))
-        if driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
+        if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3:
+                move.use_nitro = True
+        elif driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
                 and me.angular_speed < 2.0:
 
             angle_delta = acos(sum(map(lambda a, b: a*b, driving_direction_vector,
                                                          car_direction_vector)))
-
-            if world.tick == game.initial_freeze_duration_ticks + 1 and dist_to_next_turn > 3:
-                move.use_nitro = True
-            elif world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3 \
+            if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3 \
                     and angle_delta < pi / 12.0:
                 move.use_nitro = True
 
@@ -147,12 +145,12 @@ class MyStrategy:
 
         breaking_distance = me.get_distance_to(next_turn_point[0], next_turn_point[1])
         if breaking_distance < 2 * game.track_tile_size:
-            if speed >= 26.0:
+            if speed >= 30.0:
                 move.brake = True
             # elif breaking_distance < 1.5 * game.track_tile_size and speed >= 20:
             #     move.brake = True
 
-        if (is_on_turn or (driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1)) \
+        if (driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
                 and speed > 15.0:
             move.brake = True
 

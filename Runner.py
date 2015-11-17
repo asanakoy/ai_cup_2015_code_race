@@ -11,7 +11,7 @@ class Runner:
             self.remote_process_client = RemoteProcessClient(sys.argv[1], int(sys.argv[2]))
             self.token = sys.argv[3]
         else:
-            self.remote_process_client = RemoteProcessClient("127.0.0.1", 31001)
+            self.remote_process_client = RemoteProcessClient("127.0.0.1", 31002)
             self.token = "0000000000000000"
 
     def run(self):
