@@ -144,13 +144,15 @@ class MyStrategy:
                            (next_turn_tile[1] + 0.5) * game.track_tile_size]
 
         breaking_distance = me.get_distance_to(next_turn_point[0], next_turn_point[1])
-        if breaking_distance < 2 * game.track_tile_size:
+
+        main_direction = get_main_direction(me)
+        if main_direction != (0, 0) and breaking_distance < 2 * game.track_tile_size:
             if speed >= 30.0:
                 move.brake = True
             # elif breaking_distance < 1.5 * game.track_tile_size and speed >= 20:
             #     move.brake = True
 
-        if (driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
+        if main_direction != (0, 0) and (driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
                 and speed > 15.0:
             move.brake = True
 
@@ -214,24 +216,24 @@ def get_driving_direction(cur_tile, next_cp):
     return direction
 
 
-# def get_main_direction(car):
-#     PAD = pi/18
-#     A = -(pi/4 - PAD)
-#     B = (pi/4 - PAD)
-#
-#     if A <= car.angle <= B:
-#         return (1, 0)
-#
-#     if A - pi/2 <= car.angle <= B - pi/2:
-#         return (0, -1)
-#
-#     if A + pi/2 <= car.angle <= B + pi/2:
-#         return (0, 1)
-#
-#     if car.angle <= B - pi or car.angle >= A + pi:
-#         return (-1, 0)
-#
-#     return (0, 0)
+def get_main_direction(car):
+    PAD = pi/18
+    A = -(pi/4 - PAD)
+    B = (pi/4 - PAD)
+
+    if A <= car.angle <= B:
+        return (1, 0)
+
+    if A - pi/2 <= car.angle <= B - pi/2:
+        return (0, -1)
+
+    if A + pi/2 <= car.angle <= B + pi/2:
+        return (0, 1)
+
+    if car.angle <= B - pi or car.angle >= A + pi:
+        return (-1, 0)
+
+    return (0, 0)
 
 
 def have_obstacles(cur_tile, direction, world, dist):
