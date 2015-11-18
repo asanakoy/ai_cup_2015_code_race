@@ -93,23 +93,11 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
                 x_diff = abs(prev_tile[0] - next_tile[0])
                 y_diff = abs(prev_tile[1] - next_tile[1])
                 if (x_diff and y_diff) or list(tile) in waypoints:  # means change driving direction or wp in the middle of path
-
-                    if len(cps) >= 2 and cps[-2] != prev_tile and cps[-1] != prev_tile:
-                        cps.append(prev_tile)
-
                     if not cps or cps[-1] != tile:
                         cps.append(tile)  # could repeat
-
-                    cps.append(next_tile)
-
             elif list(tile) in waypoints:  #first or last point in path (it is always wp)
-                if prev_ind is not None and prev_tile != cps[-1] and (len(cps) < 2 or prev_tile != cps[-2]):
-                    check_points_indices_set.add(prev_tile)
-                    cps.append(prev_tile)
                 if not cps or cps[-1] != tile:
                     cps.append(tile)
-                if next_ind is not None:
-                    cps.append(next_tile)
 
         if check_points and cps and check_points[-1] == cps[0]:
             del check_points[-1]
@@ -269,6 +257,13 @@ def sub2ind(x, y, x_size, y_size):
 
 def sign(a):
     return (a > 0) - (a < 0)
+
+def euclid_dist(v, u):
+    return sqrt((v[0] - u[0])**2 + (v[1] - u[1])**2)
+
+
+def get_tile_center(tile, game):
+    return [(tile[0] + 0.5) * game.track_tile_size, (tile[1] + 0.5) * game.track_tile_size]
 
 
 if __name__ == "__main__":

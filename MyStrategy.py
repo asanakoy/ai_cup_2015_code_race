@@ -20,7 +20,10 @@ class MyStrategy:
         self.go_back = 0
         self.check_points = []
         self.check_points_directions = []
+        self.cur_cp_index = None
         self.next_cp_index = 0
+        self.prev_path_tile = None
+        self.turn_started_time = -100000
 
     def preproc(self, world):
         if len(world.players) == 2:
@@ -47,11 +50,62 @@ class MyStrategy:
         print 'Angular speed:', me.angular_speed
 
         if self.cur_tile == self.check_points[self.next_cp_index]:
+            self.cur_cp_index = self.next_cp_index
             self.next_cp_index += 1
             if self.next_cp_index >= len(self.check_points):
                 self.next_cp_index = 0
             print 'Cp passed!'
             print 'NEXT CP INDEX:', self.next_cp_index
+        elif self.cur_cp_index is not None and self.cur_tile != self.check_points[self.cur_cp_index]:
+            self.cur_cp_index = None
+
+
+        self.driving_direction = self.get_current_driving_direction()
+        self.driving_direction_vector = tuple(PathFinder.get_vector_by_direction(self.driving_direction))
+
+        if self.driving_direction != PathFinder.UNKNOWN_DIRECTION:
+            self.prev_path_tile = self.cur_tile
+
+
+
+    def get_next_anchor_point(self, me, world, game):
+        is_turning_started = False
+        if self.driving_direction == PathFinder.UNKNOWN_DIRECTION:
+            anchor_point = PathFinder.get_tile_center(self.prev_path_tile, game)
+            return anchor_point, is_turning_started
+
+        next_turn_cp_index = self.get_next_turn_cp_index()
+        tile_offset = 0.25 * game.track_tile_size
+
+        next_path_tile = tuple(map(lambda a, b: a + b, self.cur_tile, self.driving_direction_vector))
+
+        if not self.is_on_turn() or next_path_tile == self.check_points_directions[next_turn_cp_index]:
+            turn_center_point = PathFinder.get_tile_center(self.check_points[next_turn_cp_index], game)
+            anchor_point = [0, 0]
+            offset_direction = map(lambda a, b: -a - b,
+                        PathFinder.get_vector_by_direction(self.check_points_directions[next_turn_cp_index]),
+                        self.driving_direction_vector)
+            for i in range(2):
+                anchor_point[i] = turn_center_point[i] + offset_direction[i] * 0.28 * game.track_tile_size
+
+            if me.get_distance_to(anchor_point[0], anchor_point[1]) < game.track_tile_size * 1.5:
+                offset_direction = map(lambda a, b: a - b,
+                                       PathFinder.get_vector_by_direction(self.check_points_directions[next_turn_cp_index]),
+                                       self.driving_direction_vector)
+                for i in range(2):
+                    anchor_point[i] = turn_center_point[i] + offset_direction[i] * tile_offset
+                is_turning_started = True
+                self.turn_started_time = world.tick
+
+        else:
+            prev_direction = self.check_points_directions[self.cur_cp_index - 1]
+            prev_direction_vector = PathFinder.get_vector_by_direction(prev_direction)
+            anchor_point = PathFinder.get_tile_center(next_path_tile, game)
+            for i in xrange(2):
+                anchor_point[i] -= prev_direction_vector[i] * 0.25 * game.track_tile_size
+
+        return anchor_point, is_turning_started
+
 
 
     def move(self, me, world, game, move):
@@ -63,40 +117,13 @@ class MyStrategy:
         """
         ##################
         self.update(me, world, game)
-
-        next_cp_x = self.check_points[self.next_cp_index][0]
-        next_cp_y = self.check_points[self.next_cp_index][1]
-        next_cp_type = world.tiles_x_y[next_cp_x][next_cp_y]
+        anchor_point, is_turning_started = self.get_next_anchor_point(me, world, game)
         ##################
-
-        next_point_X = (next_cp_x + 0.5) * game.track_tile_size
-        next_point_Y = (next_cp_y + 0.5) * game.track_tile_size
-
-        cornerTileOffset = 0.25 * game.track_tile_size
 
         is_on_turn = self.is_on_turn()
         dist_to_next_turn = self.get_distance_to_next_turn()
-        driving_direction = self.get_current_driving_direction()
-        driving_direction_vector = tuple(PathFinder.get_vector_by_direction(driving_direction))
 
-
-        if self.is_turn(self.next_cp_index):
-            offset = map(lambda a, b: a - b,
-                         PathFinder.get_vector_by_direction(self.check_points_directions[self.next_cp_index]),
-                         driving_direction_vector)
-            next_point_X += offset[0] * cornerTileOffset
-            next_point_Y += offset[1] * cornerTileOffset
-        else:
-            next_next_cp_index = self.next_cp_index + 1 if self.next_cp_index < len(self.check_points) - 1 else 0
-            if self.is_turn(next_next_cp_index):  # pre-turn
-                offset = map(lambda a, b: -a + b,
-                         PathFinder.get_vector_by_direction(self.check_points_directions[next_next_cp_index]),
-                         driving_direction_vector)
-                next_point_X += offset[0] * cornerTileOffset
-                next_point_Y += offset[1] * cornerTileOffset
-
-
-        angle_to_ground_point = me.get_angle_to(next_point_X, next_point_Y)
+        angle_to_anchor_point = me.get_angle_to(anchor_point[0], anchor_point[1])
         speed_module = hypot(me.speed_x, me.speed_y)
         car_direction_vector = get_direction_vector(me)
 
@@ -109,23 +136,23 @@ class MyStrategy:
             self.go_back -= 1
             move.wheel_turn = 0
             move.engine_power = -1.0
-            if driving_direction != PathFinder.UNKNOWN_DIRECTION and self.go_back > 10:
-                move.wheel_turn = -sign(angle_to_ground_point)
+            if self.driving_direction != PathFinder.UNKNOWN_DIRECTION and self.go_back > 10:
+                move.wheel_turn = -sign(angle_to_anchor_point)
             return
         else:
             self.go_back_cd = max(0, self.go_back_cd - 1)
 
         if speed_sign >= 0 and world.tick > game.initial_freeze_duration_ticks + 50:
-            move.wheel_turn = (angle_to_ground_point * 32.0 / pi)
+            move.wheel_turn = (angle_to_anchor_point * 32.0 / pi)
 
         move.engine_power = 1.0
 
         if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
                 move.use_nitro = True
-        elif driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
+        elif self.driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
                 and me.angular_speed < 2.0:
 
-            angle_delta = acos(sum(map(lambda a, b: a*b, driving_direction_vector,
+            angle_delta = acos(sum(map(lambda a, b: a*b, self.driving_direction_vector,
                                                          car_direction_vector)))
             if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3 \
                     and angle_delta < pi / 12.0:
@@ -136,7 +163,7 @@ class MyStrategy:
             self.go_back_cd = MyStrategy.GO_BACK_CD
             print 'Start go BACK'
 
-        if abs(angle_to_ground_point) > pi*4.0/18.0 and speed_module * abs(angle_to_ground_point) > 15 * pi/4:
+        if abs(angle_to_anchor_point) > pi*4.0/18.0 and speed_module * abs(angle_to_anchor_point) > 15 * pi/4:
             move.brake = True
 
         next_turn_tile = map(lambda a, b: a + dist_to_next_turn * b, self.cur_tile, driving_direction_vector)
@@ -179,20 +206,28 @@ class MyStrategy:
         return self.get_current_driving_direction() != self.check_points_directions[prev_cp_index]
 
     def get_distance_to_next_turn(self):
-        ind = self.next_cp_index
-        cur_driving_direction = get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
-        if cur_driving_direction == PathFinder.UNKNOWN_DIRECTION:
-            return -1
-
-        while self.check_points_directions[ind] == cur_driving_direction:
-            ind += 1
-            if ind >= len(self.check_points):
-                ind = 0
+        ind = self.get_next_turn_cp_index()
+        if ind is None:
+            return None
 
         diff = map(lambda a, b: abs(a-b), self.cur_tile, self.check_points[ind])
         distance = diff[0] + diff[1]
         assert(diff[0] * diff[1] == 0)
         return distance
+
+    ## Does not count current tile as turn
+    def get_next_turn_cp_index(self):
+        ind = self.next_cp_index
+        cur_driving_direction = get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
+        if cur_driving_direction == PathFinder.UNKNOWN_DIRECTION:
+            assert False
+            return None
+
+        while self.check_points_directions[ind] == cur_driving_direction:
+            ind += 1
+            if ind >= len(self.check_points):
+                ind = 0
+        return ind
 
     def get_current_driving_direction(self):
         return get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
