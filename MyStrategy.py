@@ -79,7 +79,7 @@ class MyStrategy:
 
         next_path_tile = tuple(map(lambda a, b: a + b, self.cur_tile, self.driving_direction_vector))
 
-        if not self.is_on_turn() or next_path_tile == self.check_points_directions[next_turn_cp_index]:
+        if not self.is_on_turn() or next_path_tile == self.check_points[next_turn_cp_index]:
             turn_center_point = PathFinder.get_tile_center(self.check_points[next_turn_cp_index], game)
             anchor_point = [0, 0]
             offset_direction = map(lambda a, b: -a - b,
@@ -93,9 +93,10 @@ class MyStrategy:
                                        PathFinder.get_vector_by_direction(self.check_points_directions[next_turn_cp_index]),
                                        self.driving_direction_vector)
                 for i in range(2):
-                    anchor_point[i] = turn_center_point[i] + offset_direction[i] * tile_offset
-                is_turning_started = True
-                self.turn_started_time = world.tick
+                    anchor_point[i] = turn_center_point[i] + offset_direction[i] * 0.25 * game.track_tile_size
+                if not self.is_on_turn():
+                    is_turning_started = True
+                    self.turn_started_time = world.tick
 
         elif self.is_on_turn():
             prev_direction = self.check_points_directions[self.cur_cp_index - 1]
@@ -142,7 +143,14 @@ class MyStrategy:
         else:
             self.go_back_cd = max(0, self.go_back_cd - 1)
 
-        if speed_sign >= 0 and world.tick > game.initial_freeze_duration_ticks + 50:
+
+        if speed >= 0 and world.tick - self.turn_started_time < 9 and is_turning_started:
+            if abs(angle_to_anchor_point) < 0.05:
+                move.wheel_turn = 0.0
+            else:
+                move.wheel_turn = sign(angle_to_anchor_point)
+
+        elif not is_turning_started and speed_sign >= 0 and world.tick > game.initial_freeze_duration_ticks + 50:
             move.wheel_turn = (angle_to_anchor_point * 32.0 / pi)
 
         move.engine_power = 1.0
@@ -150,7 +158,7 @@ class MyStrategy:
         if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
                 move.use_nitro = True
         elif self.driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
-                and me.angular_speed < 2.0:
+                and me.angular_speed < 1.0:
 
             angle_delta = acos(sum(map(lambda a, b: a*b, self.driving_direction_vector,
                                                          car_direction_vector)))
@@ -163,25 +171,26 @@ class MyStrategy:
             self.go_back_cd = MyStrategy.GO_BACK_CD
             print 'Start go BACK'
 
-        if abs(angle_to_anchor_point) > pi*4.0/18.0 and speed_module * abs(angle_to_anchor_point) > 15 * pi/4:
+        if not is_turning_started and abs(angle_to_anchor_point) > pi*4.0/18.0 and speed_module * abs(angle_to_anchor_point) > 12 * pi/4:
             move.brake = True
 
-        next_turn_tile = map(lambda a, b: a + dist_to_next_turn * b, self.cur_tile, driving_direction_vector)
-        next_turn_point = [(next_turn_tile[0] + 0.5) * game.track_tile_size,
-                           (next_turn_tile[1] + 0.5) * game.track_tile_size]
+        # next_turn_tile = map(lambda a, b: a + dist_to_next_turn * b, self.cur_tile, self.driving_direction_vector)
+        # next_turn_point = [(next_turn_tile[0] + 0.5) * game.track_tile_size,
+        #                    (next_turn_tile[1] + 0.5) * game.track_tile_size]
+        #
+        # breaking_distance = me.get_distance_to(next_turn_point[0], next_turn_point[1])
+        #
+        # main_direction = get_main_direction(me)
+        # if main_direction != (0, 0) and breaking_distance < 2 * game.track_tile_size:
+        #     if speed >= 30.0
+        #         move.brake = True
 
-        breaking_distance = me.get_distance_to(next_turn_point[0], next_turn_point[1])
+        if not is_turning_started and 1.5 * game.track_tile_size < me.get_distance_to(anchor_point[0], anchor_point[1]) < ((1.6 + (speed - 23) / 10) * game.track_tile_size) and speed > 23:
+              move.brake = True
 
-        main_direction = get_main_direction(me)
-        if main_direction != (0, 0) and breaking_distance < 2 * game.track_tile_size:
-            if speed >= 30.0:
-                move.brake = True
-            # elif breaking_distance < 1.5 * game.track_tile_size and speed >= 20:
-            #     move.brake = True
-
-        if main_direction != (0, 0) and (driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
-                and speed > 15.0:
-            move.brake = True
+        # if main_direction != (0, 0) and (self.driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
+        #         and speed > 15.0:
+        #     move.brake = True
 
         move.throw_projectile = should_shoot(me, world, game)
         move.spill_oil = self.should_spill_oil(me, world, game, is_on_turn)
@@ -220,8 +229,7 @@ class MyStrategy:
         ind = self.next_cp_index
         cur_driving_direction = get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
         if cur_driving_direction == PathFinder.UNKNOWN_DIRECTION:
-            assert False
-            return None
+            return -1  # BE CAREFUL!
 
         while self.check_points_directions[ind] == cur_driving_direction:
             ind += 1
