@@ -25,6 +25,9 @@ class MyStrategy:
         self.prev_path_tile = None
         self.turn_started_time = -100000
 
+        self.driving_direction = -999
+        self.prev_driving_direction = -999
+
     def preproc(self, world):
         if len(world.players) == 2:
             print 'WARNING 2x2 game!'
@@ -59,12 +62,18 @@ class MyStrategy:
         elif self.cur_cp_index is not None and self.cur_tile != self.check_points[self.cur_cp_index]:
             self.cur_cp_index = None
 
-
-        self.driving_direction = self.get_current_driving_direction()
+        self.driving_direction = get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
         self.driving_direction_vector = tuple(PathFinder.get_vector_by_direction(self.driving_direction))
 
         if self.driving_direction != PathFinder.UNKNOWN_DIRECTION:
             self.prev_path_tile = self.cur_tile
+        elif self.prev_driving_direction != PathFinder.UNKNOWN_DIRECTION and self.prev_path_tile in self.check_points:
+            self.next_cp_index -= 1
+
+        self.prev_driving_direction = self.driving_direction
+
+
+
 
 
 
@@ -86,7 +95,7 @@ class MyStrategy:
                         PathFinder.get_vector_by_direction(self.check_points_directions[next_turn_cp_index]),
                         self.driving_direction_vector)
             for i in range(2):
-                anchor_point[i] = turn_center_point[i] + offset_direction[i] * 0.28 * game.track_tile_size
+                anchor_point[i] = turn_center_point[i] + offset_direction[i] * 0.25 * game.track_tile_size
 
             if me.get_distance_to(anchor_point[0], anchor_point[1]) < game.track_tile_size * 1.5:
                 offset_direction = map(lambda a, b: a - b,
@@ -119,6 +128,8 @@ class MyStrategy:
         ##################
         self.update(me, world, game)
         anchor_point, is_turning_started = self.get_next_anchor_point(me, world, game)
+        # with open('/home/artem/workspace/ai_cup/local-runner/plugins/%s_anchorPoints.txt' % world.map_name, 'a') as f:
+        #     f.write('{0} {1}\n'.format(anchor_point[0], anchor_point[1]))
         ##################
 
         is_on_turn = self.is_on_turn()
@@ -155,7 +166,7 @@ class MyStrategy:
 
         move.engine_power = 1.0
 
-        if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
+        if dist_to_next_turn is not None and world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
                 move.use_nitro = True
         elif self.driving_direction != PathFinder.UNKNOWN_DIRECTION and not is_on_turn \
                 and me.angular_speed < 1.0:
@@ -208,11 +219,10 @@ class MyStrategy:
         return self.check_points_directions[cp_index] != self.check_points_directions[cp_index - 1]
 
     def is_on_turn(self):
-        if self.cur_tile in self.check_points:
-            prev_cp_index = self.next_cp_index - 2  # it was already incremented, because we are on CP now
+        if self.cur_cp_index is not None:
+            return self.is_turn(self.cur_cp_index)
         else:
-            prev_cp_index = self.next_cp_index - 1
-        return self.get_current_driving_direction() != self.check_points_directions[prev_cp_index]
+            return False
 
     def get_distance_to_next_turn(self):
         ind = self.get_next_turn_cp_index()
@@ -229,16 +239,13 @@ class MyStrategy:
         ind = self.next_cp_index
         cur_driving_direction = get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
         if cur_driving_direction == PathFinder.UNKNOWN_DIRECTION:
-            return -1  # BE CAREFUL!
+            return None
 
         while self.check_points_directions[ind] == cur_driving_direction:
             ind += 1
             if ind >= len(self.check_points):
                 ind = 0
         return ind
-
-    def get_current_driving_direction(self):
-        return get_driving_direction(self.cur_tile, self.check_points[self.next_cp_index])
 
 
 def should_shoot(me, world, game):
