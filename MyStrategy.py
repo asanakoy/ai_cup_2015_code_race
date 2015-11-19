@@ -85,6 +85,7 @@ class MyStrategy:
 
         next_turn_cp_index = self.get_next_turn_cp_index()
         tile_offset = 0.25 * game.track_tile_size
+        anchor_point = [0, 0]
 
         next_path_tile = tuple(map(lambda a, b: a + b, self.cur_tile, self.driving_direction_vector))
 
@@ -144,6 +145,8 @@ class MyStrategy:
         print 'speed', speed
         print 'me.wheel_turn:', me.wheel_turn
         print 'me.engine_power:', me.engine_power
+        print 'cur tile:', self.cur_tile
+        print 'next Anchor:', anchor_point
         if self.go_back:
             self.go_back -= 1
             move.wheel_turn = 0
