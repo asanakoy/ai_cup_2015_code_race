@@ -97,7 +97,7 @@ class MyStrategy:
                 is_turning_started = True
                 self.turn_started_time = world.tick
 
-        else:
+        elif self.is_on_turn():
             prev_direction = self.check_points_directions[self.cur_cp_index - 1]
             prev_direction_vector = PathFinder.get_vector_by_direction(prev_direction)
             anchor_point = PathFinder.get_tile_center(next_path_tile, game)
