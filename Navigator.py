@@ -104,17 +104,17 @@ class Navigator:
             self.is_turn_180_grad = True
         elif dist_to_next_turn == 1 and \
                 next_path_tile.direction != next_next_path_tile.direction and \
-                path[self.cur_path_idx].direction == next_next_path_tile.direction and \
+                self.path[self.cur_path_idx].direction == next_next_path_tile.direction and \
                 not self.is_starts_turn_180_grad(next_path_tile.index) and \
                 not self.is_starts_turn_180_grad(next_next_path_tile.index):
 
             # going straight through sequential turns
             turn_center_point = get_tile_center(next_path_tile.coord, game)
-            offset_direction = next_path_tile.direction
-            anchor_point = v_add_with_coeff(turn_center_point, offset_direction, 0.5 * game.track_tile_size)
+            offset_direction = get_vector_by_direction(next_path_tile.direction)
+            anchor_point = v_add_with_coeff(turn_center_point, offset_direction, 1.0, 0.5 * game.track_tile_size)
             return anchor_point  # WARNING RETURN! ###
 
-        elif not self.is_on_turn or dist_to_next_turn == 1:
+        if not self.is_on_turn or dist_to_next_turn == 1:
             next_turn_tile = self.path[next_turn_cp_index]
             turn_center_point = get_tile_center(next_turn_tile.coord, game)
             offset_direction = v_add_with_coeff(get_vector_by_direction(next_turn_tile.direction),

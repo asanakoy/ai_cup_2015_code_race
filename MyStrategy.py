@@ -14,22 +14,24 @@ from utils import *
 class MyStrategy:
     SPEED_HEAP_SIZE = 20
     GO_BACK_CD = 100
-    DEBUG_LR = False
+    DEBUG_LR = True
 
     def __init__(self):
         self.navigator = None
         self.mycar = None
-        self.go_back_cd = MyStrategy.GO_BACK_CD # need to get positive speed at least 0.75
+        self.go_back_cd = MyStrategy.GO_BACK_CD  # need to get positive speed at least 0.75
         self.go_back = 0
         self.driving_direction_vector = None
-        try:
-            from debug.debug_client import DebugClient
-            from debug.debug_client import Color1
-        except ImportError: # no debug module, maybe running on the russianaicup.ru server
-            self.debug = None
-        else:
-            self.debug = DebugClient()
-            self.green = Color(r=0.0, g=1.0, b=0.0)
+        self.debug = None
+        if MyStrategy.DEBUG_LR:
+            try:
+                from debug.debug_client import DebugClient
+                from debug.debug_client import Color
+            except ImportError:
+                pass
+            else:
+                self.debug = DebugClient()
+                self.green = Color(r=0.0, g=1.0, b=0.0)
 
 
     def preproc(self, world):
