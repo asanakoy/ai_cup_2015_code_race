@@ -1,24 +1,71 @@
-__author__ = 'artem'
-
+from utils import *
+from DirectionExt import *
+from PathTile import PathTile
 from model.TileType import TileType
 from math import *
 from collections import deque
-from pprint import pprint
-from model.Direction import Direction
+# from pprint import pprint
+# from model.World import World
 
 
-def find_path(graph, s, prev, end_point):
+class PathFinder:
+
+    def __init__(self, world):
+        """
+        :param world: World
+        """
+        self.world = world
+        self.graph = create_graph(world.tiles_x_y, world.width, world.height)
+
+    def find_path(self, start_tile, prev, end_tile):
+        start_point = sub2ind_tile(start_tile, self.world.width, self.world.height)
+        end_point = sub2ind_tile(end_tile, self.world.width, self.world.height)
+        path = _find_path(self.graph, start_point, prev, end_point)
+        return path
+
+    def find_extra_path(self, old_path, cur_tile, next_waypoint_index):
+        first_segment = self.find_path(self.world.waypoints[next_waypoint_index-1],
+                                             -1, cur_tile)
+        second_segment = self.find_path(cur_tile, -1,
+                                           self.world.waypoints[next_waypoint_index])
+
+        assert(first_segment[-1] == second_segment[0])
+        new_path_segment = first_segment[:-1] + second_segment
+
+        new_segment_tiles = _covert_path_to_2d(new_path_segment, self.world.waypoints,
+                                               self.world.width, self.world.height, next_waypoint_index-1)
+        extra_path = _merge_new_segment_into_path(old_path, new_segment_tiles)
+        calculate_path_tiles_directions_and_indices(extra_path)
+        extra_wp_lookup_table = _build_wp_lookup_table(extra_path)
+        return extra_path, extra_wp_lookup_table
+
+
+    def find_full_opt_path(self):
+        tile_path = find_full_opt_path(self.graph, self.world.waypoints, self.world.width, self.world.height)
+        wp_lookup_table = _build_wp_lookup_table(tile_path)
+        return tile_path, wp_lookup_table
+
+
+def _find_path(graph, start_point, prev, end_point):
+    """
+    :param graph:
+    :param start_point:
+    :param prev: forbidden to visit
+    :param end_point:
+    :return: path from start_point to end_point. Each point is linear index
+    """
+    print start_point, prev, end_point
     n = len(graph)
     q = deque()
-    q.appendleft(s)
+    q.appendleft(start_point)
     visited = n * [False]
     parent = n * [False]
     d = n * [0]
-    visited[s] = True
+    visited[start_point] = True
     if prev != -1:
         visited[prev] = True
 
-    parent[s] = -1
+    parent[start_point] = -1
 
     end_found = False
 
@@ -46,7 +93,7 @@ def find_path(graph, s, prev, end_point):
     return path
 
 
-def find_check_points(tiles_x_y, waypoints, x_size, y_size):
+def find_full_opt_path(graph, waypoints, map_x_size, map_y_size):
     if len(waypoints) < 2:
         print 'WARNING! len(waypoints) < 2 (=%d)' % len(waypoints)
         return waypoints
@@ -54,14 +101,9 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
     tmp = [tuple(f) for f in waypoints]
     if len(tmp) < len(set(tmp)):
         print 'WARNING! waypoints are not unique!' % len(waypoints)
+        assert False
 
-
-
-    # turn_matrix = [y_size * [0] for _ in range(x_size)]
-
-    check_points = []
-    check_points_indices_set = set()
-    graph = create_graph(tiles_x_y, x_size, y_size)
+    path_tiles = []
 
     for i in range(len(waypoints)):
         if i < len(waypoints) - 1:
@@ -69,130 +111,68 @@ def find_check_points(tiles_x_y, waypoints, x_size, y_size):
         else:
             next_wp_index = 0
         prev = -1
-        if check_points:
-            if list(waypoints[i]) != list(check_points[-1]):
-                prev = sub2ind(check_points[-1][0], check_points[-1][1], x_size, y_size)
-            elif len(check_points) > 1:
-                prev = sub2ind(check_points[-2][0], check_points[-2][1], x_size, y_size)
+        if path_tiles:
+            if list(waypoints[i]) != list(path_tiles[-1].coord):
+                prev = sub2ind(path_tiles[-1].coord[0], path_tiles[-1].coord[1], map_x_size, map_y_size)
+            elif len(path_tiles) > 1:
+                prev = sub2ind(path_tiles[-2].coord[0], path_tiles[-2].coord[1], map_x_size, map_y_size)
 
-        path = find_path(graph, sub2ind(waypoints[i][0], waypoints[i][1], x_size, y_size), prev,
-                         sub2ind(waypoints[next_wp_index][0], waypoints[next_wp_index][1], x_size, y_size))
+        print 'i', i, '.prev', -1 if prev == -1 else ind2sub(prev, map_x_size, map_y_size)
+        path = _find_path(graph, sub2ind(waypoints[i][0], waypoints[i][1], map_x_size, map_y_size),
+                         prev, sub2ind(waypoints[next_wp_index][0], waypoints[next_wp_index][1],
+                                       map_x_size, map_y_size))
 
-        cps = []
-        for k in xrange(len(path)):
-            tile = ind2sub(path[k], x_size, y_size)
-            prev_ind = path[k - 1] if k > 0 else None
-            next_ind = path[k + 1] if k < len(path) - 1 else None
+        cps = _covert_path_to_2d(path, waypoints, map_x_size, map_y_size, i)
+        assert(not path_tiles or not cps or cps[0] == path_tiles[-1])
 
-            if prev_ind is not None:
-                prev_tile = ind2sub(prev_ind, x_size, y_size)
-            if next_ind is not None:
-                next_tile = ind2sub(next_ind, x_size, y_size)
+        if path_tiles and cps and path_tiles[-1] == cps[0]:
+            del path_tiles[-1]
 
-            if prev_ind is not None and next_ind is not None: # point in the middle
-                x_diff = abs(prev_tile[0] - next_tile[0])
-                y_diff = abs(prev_tile[1] - next_tile[1])
-                if (x_diff and y_diff) or list(tile) in waypoints:  # means change driving direction or wp in the middle of path
-                    if not cps or cps[-1] != tile:
-                        cps.append(tile)  # could repeat
-            elif list(tile) in waypoints:  #first or last point in path (it is always wp)
-                if not cps or cps[-1] != tile:
-                    cps.append(tile)
+        path_tiles = path_tiles + cps
 
-        if check_points and cps and check_points[-1] == cps[0]:
-            del check_points[-1]
+    assert(len(path_tiles) > 1)
+    # assert(path_tiles[0] == path_tiles[-1])
+    # del path_tiles[-1]
+    if path_tiles[0] == path_tiles[-1]:
+        del path_tiles[-1]
 
-        check_points = check_points + cps
+    calculate_path_tiles_directions_and_indices(path_tiles)
 
-    assert(len(check_points) > 1)
-    # assert(check_points[0] == check_points[-1])
-    # del check_points[-1]
-    if check_points[0] == check_points[-1]:
-        del check_points[-1]
-
-    check_points_directions = calculate_check_points_directions(check_points)
-
-    return check_points, check_points_directions
+    return path_tiles
 
 
-UNKNOWN_DIRECTION = -1
-
-def direction_to_str(direction):
-    if direction == Direction.LEFT:
-        return 'LEFT'
-    elif direction == Direction.RIGHT:
-        return 'RIGHT'
-    elif direction == Direction.DOWN:
-        return 'DOWN'
-    elif direction == Direction.UP:
-        return 'UP'
-    else:
-        return 'UNKNOWN'
-
-
-def get_direction_by_vector(vector):
-    if vector == [-1, 0]:
-        return Direction.LEFT
-    elif vector == [1, 0]:
-        return Direction.RIGHT
-    elif vector == [0, 1]:
-        return Direction.DOWN
-    elif vector == [0, -1]:
-        return Direction.UP
-    else:
-        return UNKNOWN_DIRECTION
+def _covert_path_to_2d(path, waypoints, map_x_size, map_y_size, start_wp_index=0):
+    path_tiles = [PathTile((0, 0)) for _ in xrange(len(path))]
+    next_wp_index = start_wp_index
+    for k in xrange(len(path)):
+        tile = ind2sub(path[k], map_x_size, map_y_size)
+        path_tiles[k].coord = tile
+        if path_tiles[k].coord == tuple(waypoints[next_wp_index]):
+            path_tiles[k].is_waypoint = True
+            path_tiles[k].wp_index = next_wp_index
+            next_wp_index = next_wp_index + 1 if next_wp_index + 1 < len(waypoints) else 0
+    assert(next_wp_index - start_wp_index <= len(waypoints))
+    return path_tiles
 
 
-def get_vector_by_direction(direction):
-    if direction == Direction.LEFT:
-        return [-1, 0]
-    elif direction == Direction.RIGHT:
-        return [1, 0]
-    elif direction == Direction.DOWN:
-        return [0, 1]
-    elif direction == Direction.UP:
-        return [0, -1]
-    else:
-        return [0, 0]  # UNKNOWN_DIRECTION
-
-
-def calculate_check_points_directions(check_points):
-    directions = len(check_points) * [-1]
-    for i in xrange(len(check_points)):
-        next = check_points[i + 1 if i < len(check_points) - 1 else 0]
-        vector = map(lambda x, y: sign(x - y), next, check_points[i])
-        directions[i] = get_direction_by_vector(vector)
-    return directions
-
-
-
-
-
-def find_path_test():
-    tiles_x_y = [[3, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5],
-                 [2, 4, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 9],
-                 [4, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 8, 5, 2],
-                 [0, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 6, 2, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 6, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7, 5, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 8, 9, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 9, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 9, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 6, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 6, 0, 2],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 6],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 6, 0]]
-    waypoints = [[13, 15], [1, 15], [0, 0], [2, 0], [2, 14], [13, 13]]
-    x_size = 16
-    y_size = 16
-    return find_check_points(tiles_x_y, waypoints, x_size, y_size)
-
+def calculate_path_tiles_directions_and_indices(path_tiles):
+    """
+    :param path_tiles: list of PathTile's
+    :return:
+    """
+    for i in xrange(len(path_tiles)):
+        next_tile = path_tiles[i + 1 if i < len(path_tiles) - 1 else 0]
+        vector = map(lambda x, y: sign(x - y), next_tile.coord, path_tiles[i].coord)
+        path_tiles[i].direction = get_direction_by_vector(vector)
+        path_tiles[i].index = i
 
 
 def create_graph(tiles_x_y, x_size, y_size):
+    """
+    :param x_size: width
+    :param y_size: height
+    :return: graph
+    """
     g = [[] for _ in xrange(x_size * y_size)]
 
     for x in xrange(x_size):
@@ -240,34 +220,62 @@ def create_graph(tiles_x_y, x_size, y_size):
     return g
 
 
-#x_size - width
-#y_size - height
-def ind2sub(ind, x_size, y_size):
-    x = int(floor(ind / y_size))
-    y = int(ind - x * y_size)
-    assert (x < x_size and y < y_size)
-    return x, y
+def _merge_new_segment_into_path(path, new_segment):
+    """
 
-#x_size - width
-#y_size - height
-def sub2ind(x, y, x_size, y_size):
-    assert (x < x_size and y < y_size)
-    return x * y_size + y
+    :type path: list of PathTile
+    :param path: optimal path (the whole lap)
+    :type new_segment: list of PathTile
+    :param new_segment: new path segment between last wp and next wp
+    :return:
+    """
+    assert(new_segment[0].is_waypoint == new_segment[-1].is_waypoint == True and
+           new_segment[0].coord != new_segment[-1].coord)
+    idx_start = 0
+    while idx_start < len(path):
+        if path[idx_start].is_waypoint and path[idx_start].coord == new_segment[0].coord:
+            break
+        else:
+            idx_start += 1
+    assert idx_start < len(path)
+
+    idx_end = idx_start + 1
+
+    while idx_end < len(path):
+       if path[idx_end].is_waypoint and path[idx_end].coord == new_segment[-1].coord:
+           break
+       else:
+           idx_end += 1
+    if idx_end == len(path):
+        idx_end = 0
+        assert(path[idx_end].coord == new_segment[-1].coord)
+
+    if idx_end != 0:
+       new_path = path[0:idx_start] + new_segment[0:-1] + path[idx_end:]
+    else:
+       new_path = path[0:idx_start] + new_segment[0:-1]
+    return new_path
 
 
-def sign(a):
-    return (a > 0) - (a < 0)
+def _build_wp_lookup_table(path):
+    """
+    :type path: list of PathTile
+    :return:
+    """
+    lookup_table = []
+    for i in xrange(len(path)):
+        if path[i].is_waypoint:
+            lookup_table.append(i)
 
-def euclid_dist(v, u):
-    return sqrt((v[0] - u[0])**2 + (v[1] - u[1])**2)
+    return lookup_table
 
 
-def get_tile_center(tile, game):
-    return [(tile[0] + 0.5) * game.track_tile_size, (tile[1] + 0.5) * game.track_tile_size]
 
 
-if __name__ == "__main__":
-    check_points, directions = find_path_test()
-    pprint(check_points)
-    pprint(map(lambda d: direction_to_str(d), directions))
+
+# if __name__ == "__main__":
+    # find_path_test()
+    # check_points, directions = find_path_test()
+    # pprint(check_points)
+    # pprint(map(lambda d: direction_to_str(d), directions))
 
