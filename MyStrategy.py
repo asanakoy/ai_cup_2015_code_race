@@ -70,8 +70,10 @@ class MyStrategy:
         if len(world.players) == 2:
             print '2x2 Game. Do nothing.'
             return
+        if me.finished_track:
+            return
         self.update(me, world, game)
-        anchor_point = self.navigator.get_anchor_point(self.mycar, game)
+        anchor_point = self.navigator.get_anchor_point(self.mycar, world, game)
         is_turning_started = self.navigator.is_turning_started
         ##################
 
@@ -83,6 +85,7 @@ class MyStrategy:
         print 'me.wheel_turn:', me.wheel_turn
         print 'me.engine_power:', me.engine_power
         print 'next Anchor:', anchor_point
+        print 'is_on_long_ladder:', self.navigator.is_on_long_ladder
         if self.debug:
             self.debug.use_tile_coords(False)
             with self.debug.post() as dbg:
@@ -111,13 +114,20 @@ class MyStrategy:
 
         if dist_to_next_turn is not None and world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 2:
                 move.use_nitro = True
-        elif not self.navigator.is_on_turn and me.angular_speed < 1.0:
+        elif (not self.navigator.is_on_turn or self.navigator.is_on_long_ladder) and me.angular_speed < 0.5 and world.tick > game.initial_freeze_duration_ticks:
             # TODO check that we haven't recently strayed from the path
 
-            angle_delta = acos(sum(map(lambda a, b: a*b, self.driving_direction_vector,
-                                                         self.mycar.direction_vector)))
-            if world.tick > game.initial_freeze_duration_ticks and dist_to_next_turn > 3 \
-                    and angle_delta < pi / 12.0:
+            if self.navigator.is_on_long_ladder:
+                angle_delta = abs(angle_to_anchor_point)
+                angle_threshold = pi / 72.0
+            else:
+                angle_delta = abs(acos(sum(map(lambda a, b: a*b, self.driving_direction_vector,
+                                                             self.mycar.direction_vector))))
+                angle_threshold = pi / 18.0
+
+            if world.tick > game.initial_freeze_duration_ticks and \
+                    (dist_to_next_turn > 3 or self.navigator.is_on_long_ladder) \
+                    and angle_delta < angle_threshold:
                 move.use_nitro = True
 
         if not self.go_back_cd and world.tick > game.initial_freeze_duration_ticks + 100 and abs(self.mycar.speed) < 0.12:
@@ -138,10 +148,6 @@ class MyStrategy:
                  and self.mycar.speed > speed_limit_before_turn:
               move.brake = True
 
-        # if main_direction != (0, 0) and (self.driving_direction != PathFinder.UNKNOWN_DIRECTION and dist_to_next_turn <= 1) \
-        #         and self.mycar.speed > 15.0:
-        #     move.brake = True
-
         move.throw_projectile = should_shoot(me, world, game)
         move.spill_oil = self.should_spill_oil(me, world, game)
 
@@ -150,7 +156,7 @@ class MyStrategy:
     def should_spill_oil(self, me, world, game):
         if self.navigator.is_on_turn and world.tick > game.initial_freeze_duration_ticks + 200:
             for car in world.cars:
-                if not car.teammate and me.get_distance_to_unit(car) < game.track_tile_size * 1.5:
+                if not car.teammate and me.get_distance_to_unit(car) < game.track_tile_size * 6:
                     return True
         return False
 
@@ -160,8 +166,8 @@ class MyStrategy:
 
 def should_shoot(me, world, game):
     for car in world.cars:
-        if not car.teammate and car.durability > 0 and abs(me.get_angle_to_unit(car)) < pi / 18 and \
-                me.get_distance_to_unit(car) < game.track_tile_size:
+        if not car.teammate and car.durability > 0 and abs(me.get_angle_to_unit(car)) < pi / 36 and \
+                me.get_distance_to_unit(car) < 6*game.track_tile_size:
             return True
 
     return False

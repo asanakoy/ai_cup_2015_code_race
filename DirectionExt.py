@@ -37,15 +37,15 @@ def get_direction_by_vector(vector):
 
 def get_vector_by_direction(direction):
     if direction == Direction.LEFT:
-        return [-1, 0]
+        return (-1, 0)
     elif direction == Direction.RIGHT:
-        return [1, 0]
+        return (1, 0)
     elif direction == Direction.DOWN:
-        return [0, 1]
+        return (0, 1)
     elif direction == Direction.UP:
-        return [0, -1]
+        return (0, -1)
     elif direction == DirectionExt.UNKNOWN:
-        return None # UNKNOWN_DIRECTION
+        return None  # UNKNOWN_DIRECTION
     else:
         raise ValueError('Unknown value')
 

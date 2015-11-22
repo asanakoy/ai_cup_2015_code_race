@@ -7,6 +7,7 @@ class MockWorld:
         self.waypoints = waypoints
         self.width = len(tiles_x_y)
         self.height = len(tiles_x_y[0])
+        self.bonuses = []
 
 
     @staticmethod

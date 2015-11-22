@@ -3,6 +3,8 @@ __author__ = 'artem'
 from utils import *
 from DirectionExt import *
 from MyCar import MyCar
+from model.World import World
+from model.Bonus import Bonus
 import PathFinder
 
 class Navigator:
@@ -86,35 +88,35 @@ class Navigator:
         self.cur_path_idx = idx
 
 
-    def get_anchor_point(self, car, game):
+    def get_anchor_point(self, car, world, game):
         """
         :type car: MyCar
+        :type world: model.World
         :type game: model.Game
         :rtype: tuple of double
         """
         DISTANCE_BEFORE_TURN = game.track_tile_size * 1.5
+        BONUS_DISTANCE_LOWER = DISTANCE_BEFORE_TURN + game.track_tile_size * 0.3
+        BONUS_DISTANCE_UPPER = DISTANCE_BEFORE_TURN + game.track_tile_size * 0.7
         self.is_turning_started = False
         self.is_turn_180_grad = False
+        self.is_on_long_ladder = False
         self.is_on_turn = self.path[self.cur_path_idx - 1].direction != self.path[self.cur_path_idx].direction
         next_turn_cp_index, dist_to_next_turn = self.find_next_turn()
         next_path_tile = self._get_path_tile(self.cur_path_idx + 1)
         next_next_path_tile = self._get_path_tile(self.cur_path_idx + 2)
 
-        if self.is_on_turn and self.is_starts_turn_180_grad(self.cur_path_idx):
-            self.is_turn_180_grad = True
-        elif dist_to_next_turn == 1 and \
-                next_path_tile.direction != next_next_path_tile.direction and \
-                self.path[self.cur_path_idx].direction == next_next_path_tile.direction and \
-                not self.is_starts_turn_180_grad(next_path_tile.index) and \
-                not self.is_starts_turn_180_grad(next_next_path_tile.index):
+        self.is_turn_180_grad = self.is_on_turn and self.is_starts_turn_180_grad(self.cur_path_idx)
 
+        if self.is_starts_ladder(self.cur_path_idx):
             # going straight through sequential turns
             turn_center_point = get_tile_center(next_path_tile.coord, game)
             offset_direction = get_vector_by_direction(next_path_tile.direction)
             anchor_point = v_add_with_coeff(turn_center_point, offset_direction, 1.0, 0.5 * game.track_tile_size)
-            return anchor_point  # WARNING RETURN! ###
+            if self.is_starts_ladder(next_next_path_tile.index) and self.is_starts_ladder(self.cur_path_idx - 1):
+                self.is_on_long_ladder = True
 
-        if not self.is_on_turn or dist_to_next_turn == 1:
+        elif not self.is_on_turn or dist_to_next_turn == 1:
             next_turn_tile = self.path[next_turn_cp_index]
             turn_center_point = get_tile_center(next_turn_tile.coord, game)
             offset_direction = v_add_with_coeff(get_vector_by_direction(next_turn_tile.direction),
@@ -141,22 +143,66 @@ class Navigator:
                 anchor_point = v_add_with_coeff(anchor_point, prev_direction_vector,
                                                 1.0, -0.25 * game.track_tile_size)
         else:
-            assert(False, 'Unpredicted case in Navigator')
+            assert False
+
+        dist_to_anchor = car.base.get_distance_to(anchor_point[0], anchor_point[1])
+        min_dist = 10000000
+        closest_bonus_anchor = None
+        for bonus in world.bonuses:
+            dist_anchor_to_bonus = bonus.get_distance_to(anchor_point[0], anchor_point[1])
+            if dist_to_anchor > BONUS_DISTANCE_LOWER and dist_anchor_to_bonus > BONUS_DISTANCE_LOWER:
+                bonus_anchor, dist_to_bonus = self._get_anchor_for_bonus(bonus, car.base, game, dist_to_anchor,
+                                                                         dist_anchor_to_bonus, BONUS_DISTANCE_LOWER, BONUS_DISTANCE_UPPER)
+                if bonus_anchor is not None and dist_to_bonus < min_dist:
+                    min_dist = dist_to_bonus
+                    closest_bonus_anchor = bonus_anchor
+
+        if closest_bonus_anchor is not None:
+            anchor_point = closest_bonus_anchor
 
         return anchor_point
 
+    def _get_anchor_for_bonus(self, bonus, car, game, dist_to_anchor, dist_anchor_to_bonus, BONUS_DISTANCE_LOWER, BONUS_DISTANCE_UPPER):
+        """
+        :type bonus: model.Bonus
+        :type car: model.Car
+        :type game: model.Game
+        :return: tuple of double
+        """
+        dist_to_bonus = car.get_distance_to_unit(bonus)
+        tile = (int(floor(bonus.x / game.track_tile_size)),  int(floor(bonus.y / game.track_tile_size)))
+        cur_tile = self.path[self.cur_path_idx]
+        dist_in_tiles = vector_substract(tile, cur_tile.coord)
+        orthogonal_direction = (sign(cur_tile.direction_vector[1]), sign(cur_tile.direction_vector[0]))
+        is_on_way = sign(dist_in_tiles[0]) == cur_tile.direction_vector[0] and sign(dist_in_tiles[1]) == cur_tile.direction_vector[1]
 
+        if is_on_way and 300 < dist_to_bonus < dist_to_anchor and \
+                ((dist_anchor_to_bonus > BONUS_DISTANCE_UPPER and abs(car.get_angle_to_unit(bonus)) < pi / 9.0) or
+                 (dist_anchor_to_bonus > BONUS_DISTANCE_LOWER and abs(car.get_angle_to_unit(bonus)) < pi / 14.0)):
 
+            bonus_local_coord = [bonus.x - tile[0] * game.track_tile_size, bonus.y - tile[1] * game.track_tile_size]
+            offset = max(car.width, car.height) / 2.0 + game.track_tile_margin + 3
 
+            bonus_coord = [0, 0]
+            for i in xrange(2):
+                bonus_coord[i] = tile[i] * game.track_tile_size + \
+                                 min(max(offset * orthogonal_direction[i], bonus_local_coord[i]),
+                                     game.track_tile_size - offset * orthogonal_direction[i])
+            print 'BONUS', tile, ' , dist in tiles:', dist_in_tiles
+            return bonus_coord , dist_to_bonus
 
-    def find_next_turn(self):
+        return None, None
+
+    def find_next_turn(self, _from=None):
         """
         Finds index of the next turn tile, that lies after current tile.
         Returns index and distance (in tiles) to the turn.
         """
-        idx = self.cur_path_idx
+        if _from is None:
+            _from = self.cur_path_idx
+        idx = _from
         dist = 0
-        while self.path[self.cur_path_idx].direction == self.path[idx].direction:
+        while self.path[_from].direction == self.path[idx].direction:
             idx += 1
             dist += 1
             if idx >= len(self.path):
@@ -170,11 +216,9 @@ class Navigator:
         :type idx: int
         :rtype: PathTile
         """
-        self.path
         n = len(self.path)
 
         if idx < 0:
-            print 1
             idx = -(idx + 1)
 
         while idx >= n:
@@ -183,6 +227,7 @@ class Navigator:
         return self.path[idx]
 
     def is_starts_turn_180_grad(self, idx):
+        print '--', idx - 1, idx, len(self.path)
         is_turn = self.path[idx - 1].direction != self.path[idx].direction
         if is_turn:
             next_path_tile = self._get_path_tile(idx + 1)
@@ -191,6 +236,22 @@ class Navigator:
 
             if next_direction_vector[0] == -prev_direction_vector[0] and \
                     next_direction_vector[1] == -prev_direction_vector[1]:
+                return True
+        return False
+
+    def is_starts_ladder(self, idx):
+        tile = self._get_path_tile(idx)
+        idx = tile.index
+        is_turn_180_grad = self.is_starts_turn_180_grad(idx)
+        next_turn_idx, dist_to_next_turn = self.find_next_turn(idx)
+
+        if not is_turn_180_grad and dist_to_next_turn == 1:
+            next_path_tile = self.path[next_turn_idx]
+            next_next_path_tile = self._get_path_tile(idx + 2)
+
+            if next_path_tile.direction != next_next_path_tile.direction and \
+                    tile.direction == next_next_path_tile.direction and \
+                    not self.is_starts_turn_180_grad(next_next_path_tile.index):
                 return True
         return False
 

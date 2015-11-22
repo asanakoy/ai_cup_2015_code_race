@@ -164,6 +164,7 @@ def calculate_path_tiles_directions_and_indices(path_tiles):
         next_tile = path_tiles[i + 1 if i < len(path_tiles) - 1 else 0]
         vector = map(lambda x, y: sign(x - y), next_tile.coord, path_tiles[i].coord)
         path_tiles[i].direction = get_direction_by_vector(vector)
+        path_tiles[i].direction_vector = tuple(vector)
         path_tiles[i].index = i
 
 

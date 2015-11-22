@@ -1,6 +1,6 @@
 import utils
 from DirectionExt import DirectionExt
-
+from DirectionExt import get_vector_by_direction
 
 class PathTile:
 
@@ -9,6 +9,7 @@ class PathTile:
         self.is_waypoint = is_waypoint
         self.wp_index = wp_index
         self.direction = direction
+        self.direction_vector = get_vector_by_direction(direction)
         self.index = path_index  # index inside path
 
     def __eq__(self, other):

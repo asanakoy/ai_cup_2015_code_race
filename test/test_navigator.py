@@ -25,7 +25,7 @@ class TestNavigator(TestCase):
         mock_car.next_waypoint_index = 1
         car = MyCar(mock_car, mock_game.track_tile_size)
         navigator.update_state(car)
-        anchor_point = navigator.get_anchor_point(car, mock_game)
+        anchor_point = navigator.get_anchor_point(car, mock_world, mock_game)
         self.assertEqual(anchor_point, (600.0, 12600.0))
         self.assertEqual(navigator._prev_path_tile_idx, 0)
         self.assertFalse(navigator.is_on_extra_path)
