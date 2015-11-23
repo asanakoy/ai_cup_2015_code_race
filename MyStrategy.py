@@ -3,6 +3,7 @@ from model.Game import Game
 from model.Move import Move
 from model.World import World
 from model.TileType import TileType
+from model.OilSlick import OilSlick
 from math import *
 from pprint import pprint
 from random import random
@@ -154,9 +155,17 @@ class MyStrategy:
 ########################################################################################################################
 
     def should_spill_oil(self, me, world, game):
+        if me.oil_canister_count == 0:
+            return False
+
+        OIL_SLICK_RADIUS = 150
         if self.navigator.is_turning_started and world.tick > game.initial_freeze_duration_ticks + 385:
+            lower_dist = max(me.width, me.height) + 10 + OIL_SLICK_RADIUS / 5.0
             for car in world.cars:
-                if not car.teammate and me.get_distance_to_unit(car) < game.track_tile_size * 8.0:
+                if not car.teammate and lower_dist < me.get_distance_to_unit(car) < game.track_tile_size * 8.0 \
+                        and abs(me.get_angle_to_unit(car)) > pi / 2:
+                    print 'SPILL_OIL: anlg_to_car({}), dist({})'.format(me.get_angle_to_unit(car),\
+                            me.get_distance_to_unit(car))
                     return True
         return False
 
