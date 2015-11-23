@@ -154,9 +154,9 @@ class MyStrategy:
 ########################################################################################################################
 
     def should_spill_oil(self, me, world, game):
-        if self.navigator.is_turning_started and world.tick > game.initial_freeze_duration_ticks + 200:
+        if self.navigator.is_turning_started and world.tick > game.initial_freeze_duration_ticks + 385:
             for car in world.cars:
-                if not car.teammate and me.get_distance_to_unit(car) < game.track_tile_size * 7.2:
+                if not car.teammate and me.get_distance_to_unit(car) < game.track_tile_size * 8.0:
                     return True
         return False
 
