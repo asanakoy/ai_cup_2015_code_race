@@ -117,7 +117,6 @@ def find_full_opt_path(graph, waypoints, map_x_size, map_y_size):
             elif len(path_tiles) > 1:
                 prev = sub2ind(path_tiles[-2].coord[0], path_tiles[-2].coord[1], map_x_size, map_y_size)
 
-        print 'i', i, '.prev', -1 if prev == -1 else ind2sub(prev, map_x_size, map_y_size)
         path = _find_path(graph, sub2ind(waypoints[i][0], waypoints[i][1], map_x_size, map_y_size),
                          prev, sub2ind(waypoints[next_wp_index][0], waypoints[next_wp_index][1],
                                        map_x_size, map_y_size))

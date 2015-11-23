@@ -151,7 +151,7 @@ class Navigator:
         for bonus in world.bonuses:
             dist_anchor_to_bonus = bonus.get_distance_to(anchor_point[0], anchor_point[1])
             if dist_to_anchor > BONUS_DISTANCE_LOWER and dist_anchor_to_bonus > BONUS_DISTANCE_LOWER:
-                bonus_anchor, dist_to_bonus = self._get_anchor_for_bonus(bonus, car.base, game, dist_to_anchor,
+                bonus_anchor, dist_to_bonus = self._get_anchor_for_bonus(bonus, car, game, dist_to_anchor,
                                                                          dist_anchor_to_bonus, BONUS_DISTANCE_LOWER, BONUS_DISTANCE_UPPER)
                 if bonus_anchor is not None and dist_to_bonus < min_dist:
                     min_dist = dist_to_bonus
@@ -165,23 +165,26 @@ class Navigator:
     def _get_anchor_for_bonus(self, bonus, car, game, dist_to_anchor, dist_anchor_to_bonus, BONUS_DISTANCE_LOWER, BONUS_DISTANCE_UPPER):
         """
         :type bonus: model.Bonus
-        :type car: model.Car
+        :type car: MyCar
         :type game: model.Game
         :return: tuple of double
         """
-        dist_to_bonus = car.get_distance_to_unit(bonus)
+        dist_to_bonus = car.base.get_distance_to_unit(bonus)
         tile = (int(floor(bonus.x / game.track_tile_size)),  int(floor(bonus.y / game.track_tile_size)))
         cur_tile = self.path[self.cur_path_idx]
         dist_in_tiles = vector_substract(tile, cur_tile.coord)
         orthogonal_direction = (sign(cur_tile.direction_vector[1]), sign(cur_tile.direction_vector[0]))
         is_on_way = sign(dist_in_tiles[0]) == cur_tile.direction_vector[0] and sign(dist_in_tiles[1]) == cur_tile.direction_vector[1]
 
-        if is_on_way and 300 < dist_to_bonus < dist_to_anchor and \
-                ((dist_anchor_to_bonus > BONUS_DISTANCE_UPPER and abs(car.get_angle_to_unit(bonus)) < pi / 9.0) or
-                 (dist_anchor_to_bonus > BONUS_DISTANCE_LOWER and abs(car.get_angle_to_unit(bonus)) < pi / 14.0)):
+        prev_tile_was_turn = self.path[self.cur_path_idx - 2].direction != self.path[self.cur_path_idx - 1].direction
+
+        if (not prev_tile_was_turn or car.speed < 12.0) and \
+                is_on_way and 300 < dist_to_bonus < dist_to_anchor and \
+                ((dist_anchor_to_bonus > BONUS_DISTANCE_UPPER and abs(car.base.get_angle_to_unit(bonus)) < pi / 10.5) or
+                 (dist_anchor_to_bonus > BONUS_DISTANCE_LOWER and abs(car.base.get_angle_to_unit(bonus)) < pi / 14.0)):
 
             bonus_local_coord = [bonus.x - tile[0] * game.track_tile_size, bonus.y - tile[1] * game.track_tile_size]
-            offset = max(car.width, car.height) / 2.0 + game.track_tile_margin + 3
+            offset = max(car.base.width, car.base.height) / 2.0 + game.track_tile_margin + 3
 
             bonus_coord = [0, 0]
             for i in xrange(2):
@@ -227,7 +230,6 @@ class Navigator:
         return self.path[idx]
 
     def is_starts_turn_180_grad(self, idx):
-        print '--', idx - 1, idx, len(self.path)
         is_turn = self.path[idx - 1].direction != self.path[idx].direction
         if is_turn:
             next_path_tile = self._get_path_tile(idx + 1)

@@ -10,6 +10,7 @@ from  DirectionExt import *
 from MyCar import MyCar
 from Navigator import Navigator
 from utils import *
+import Shooter
 
 class MyStrategy:
     SPEED_HEAP_SIZE = 20
@@ -81,9 +82,8 @@ class MyStrategy:
 
         angle_to_anchor_point = me.get_angle_to(anchor_point[0], anchor_point[1])
 
-        print 'speed', self.mycar.speed
-        print 'me.wheel_turn:', me.wheel_turn
-        print 'me.engine_power:', me.engine_power
+        print 'SP(%.5f) EP(%.5f) ANSP(%.5f)' % (self.mycar.speed, me.engine_power, self.mycar.base.angular_speed)
+        print 'WT(%.5f) ANGL(%.5f) ANCH_ANG(%.5f)' % (me.wheel_turn, me.angle, angle_to_anchor_point)
         print 'next Anchor:', anchor_point
         print 'is_on_long_ladder:', self.navigator.is_on_long_ladder
         if self.debug:
@@ -148,7 +148,7 @@ class MyStrategy:
                  and self.mycar.speed > speed_limit_before_turn:
               move.brake = True
 
-        move.throw_projectile = should_shoot(me, world, game)
+        move.throw_projectile = Shooter.should_shoot(self.mycar, world, game)
         move.spill_oil = self.should_spill_oil(me, world, game)
 
 ########################################################################################################################
@@ -162,15 +162,6 @@ class MyStrategy:
 
     def get_increased_cp_idx(self, cp_index):
         return cp_index + 1 if cp_index + 1 < len(self.check_points) else 0
-
-
-def should_shoot(me, world, game):
-    for car in world.cars:
-        if not car.teammate and car.durability > 0 and abs(me.get_angle_to_unit(car)) < pi / 36 and \
-                me.get_distance_to_unit(car) < 6*game.track_tile_size:
-            return True
-
-    return False
 
 
 # def get_main_direction(car):
