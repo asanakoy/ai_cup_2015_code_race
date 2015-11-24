@@ -132,7 +132,7 @@ class MyStrategy:
 
             if world.tick > game.initial_freeze_duration_ticks and \
                     (dist_to_next_turn > 3 or self.navigator.is_on_long_ladder) \
-                    and angle_delta < angle_threshold:
+                    and angle_delta < angle_threshold and me.remaining_oiled_ticks == 0:
                 move.use_nitro = True
 
         if not self.go_back_cd and world.tick > game.initial_freeze_duration_ticks + 100 and abs(self.mycar.speed) < 0.12:
