@@ -4,6 +4,7 @@ from PathTile import PathTile
 from model.TileType import TileType
 from math import *
 from collections import deque
+import copy
 # from pprint import pprint
 # from model.World import World
 
@@ -254,7 +255,7 @@ def _merge_new_segment_into_path(path, new_segment):
        new_path = path[0:idx_start] + new_segment[0:-1] + path[idx_end:]
     else:
        new_path = path[0:idx_start] + new_segment[0:-1]
-    return new_path
+    return copy.deepcopy(new_path)
 
 
 def _build_wp_lookup_table(path):
