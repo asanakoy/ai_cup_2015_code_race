@@ -19,6 +19,7 @@ class MyStrategy:
     DEBUG_LR = False
 
     def __init__(self):
+        self.tmp = None
         self.navigator = None
         self.mycar = None
         self.go_back_cd = MyStrategy.GO_BACK_CD  # need to get positive speed at least 0.75
@@ -52,10 +53,10 @@ class MyStrategy:
 
         if world.tick == 0:
             pprint(self.navigator.path)
+            print "car.width %d, car.height: %d" % (me.width, me.height)
 
-        print 'Tick[%d] %s' % (world.tick, str(self.mycar.cur_tile))
+        print 'Tick[%d] %s {%.2f, %.2f}' % (world.tick, str(self.mycar.cur_tile), self.mycar.base.x, self.mycar.base.y)
         # print 'Nitro:', me.nitro_charge_count
-        print 'Angular speed:', me.angular_speed
 
         self.driving_direction_vector = tuple(get_vector_by_direction(
                                             self.navigator.path[self.navigator.cur_path_idx].direction))
@@ -82,9 +83,12 @@ class MyStrategy:
         next_turn_idx, dist_to_next_turn = self.navigator.find_next_turn()
 
         angle_to_anchor_point = me.get_angle_to(anchor_point[0], anchor_point[1])
-
+        if self.tmp != me.next_waypoint_index:
+            self.tmp = me.next_waypoint_index
+            print "NEW_WP:", (me.next_waypoint_x, me.next_waypoint_y)
         print 'SP(%.5f) EP(%.5f) ANSP(%.5f)' % (self.mycar.speed, me.engine_power, self.mycar.base.angular_speed)
         print 'WT(%.5f) ANGL(%.5f) ANCH_ANG(%.5f)' % (me.wheel_turn, me.angle, angle_to_anchor_point)
+        print 'PRJCT(%d)' % (me.projectile_count)
         print 'next Anchor:', anchor_point
         print 'is_on_long_ladder:', self.navigator.is_on_long_ladder
         if self.debug:
@@ -150,12 +154,14 @@ class MyStrategy:
               move.brake = True
 
         move.throw_projectile = Shooter.should_shoot(self.mycar, world, game)
+        if move.throw_projectile:
+            print 'SHOOT--->'
         move.spill_oil = self.should_spill_oil(me, world, game)
 
 ########################################################################################################################
 
     def should_spill_oil(self, me, world, game):
-        if me.oil_canister_count == 0:
+        if me.oil_canister_count == 0 or self.mycar.speed < 2.0:
             return False
 
         OIL_SLICK_RADIUS = 150

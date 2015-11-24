@@ -5,6 +5,7 @@ from DirectionExt import *
 from MyCar import MyCar
 from model.World import World
 from model.Bonus import Bonus
+from pprint import pprint
 import PathFinder
 
 class Navigator:
@@ -69,6 +70,8 @@ class Navigator:
             self._extra_path, self._extra_path_wp_lookup_table \
                 = self.pathfinder.find_extra_path(self._opt_path, car.cur_tile,
                                                   car.base.next_waypoint_index)
+            print 'EXTRA_PATH:'
+            pprint(self._extra_path)
             self.is_on_extra_path = True
             # from the prev_wp to the new extra tile chain is always simple
             idx = self._find_tile_in_path(car.cur_tile,
