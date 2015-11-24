@@ -69,6 +69,7 @@ def should_shoot(me, world, game):
                     is_out_of_bounds = True
                     break
             if is_out_of_bounds:
+                print 'Shoot? meet tile out of bounds (%s)' % str(meet_tile)
                 continue
 
             meet_tile_type = world.tiles_x_y[meet_tile[0]][meet_tile[1]]
@@ -91,6 +92,15 @@ def should_shoot(me, world, game):
                 enemy_path += (time - time_to_accelerate) * max_speed
 
             # TODO make more accurate path approximation
+
+            #############
+            print 'Shoot?'
+            print 'time (%.2f), time_to_accelerate (%.2f)' % (time, time_to_accelerate)
+            print 'np.dot(v1, my_dir) > 0.0 and np.dot(v2, dir) > 0.0',  np.dot(v1, my_dir) > 0.0 and np.dot(v2, dir) > 0.0
+            print 'L1 (%.2f) L2 (%.2f) enemy_path(%.2f), MEET_TILE_TYPE: (%d)' % (L_1, L_2, enemy_path, meet_tile_type)
+            print 'Target: hp(%.2f) WT(%.2f) SP_MODULE(%.2f) ANGLE(%.2f)' % (car.durability, car.wheel_turn, target_speed_module, car.angle)
+
+            #############
 
             if np.dot(v1, my_dir) > 0.0 and np.dot(v2, dir) > 0.0 and target_speed_module > 9.0 \
                     and L_1 < game.track_tile_size * 6.0 and (enemy_path - 35) <= L_2 <= (enemy_path + 35) and \
