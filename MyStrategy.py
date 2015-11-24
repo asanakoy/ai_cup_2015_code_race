@@ -109,7 +109,9 @@ class MyStrategy:
         else:
             self.go_back_cd = max(0, self.go_back_cd - 1)
 
-        if self.mycar.speed >= 0 and world.tick > game.initial_freeze_duration_ticks + 50:
+        if ((self.navigator.is_turning_started or self.navigator.is_turn_180_grad) and \
+                world.tick <= game.initial_freeze_duration_ticks + 50) or \
+                (self.mycar.speed >= 0 and world.tick > game.initial_freeze_duration_ticks + 50):
             if self.navigator.is_turn_180_grad:
                 move.wheel_turn = sign(angle_to_anchor_point)
             else:
