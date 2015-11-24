@@ -67,17 +67,21 @@ class Navigator:
 
         # if we strayed from the path
         if idx is None:
-            self._extra_path, self._extra_path_wp_lookup_table \
-                = self.pathfinder.find_extra_path(self._opt_path, car.cur_tile,
-                                                  car.base.next_waypoint_index)
-            print 'EXTRA_PATH:'
-            pprint(self._extra_path)
-            self.is_on_extra_path = True
-            # from the prev_wp to the new extra tile chain is always simple
-            idx = self._find_tile_in_path(car.cur_tile,
-                                          self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1])
-            self._prev_path_tile_idx = idx
-            assert idx is not None
+            if car.cur_tile == self.path[self._opt_path_wp_lookup_table[car.base.next_waypoint_index - 1]].coord:
+                # cur tile is the last visited waypoint. The just restsrt optimal path from the last waypoint (current tile)
+                idx = self._opt_path_wp_lookup_table[car.base.next_waypoint_index - 1]
+            else:
+                self._extra_path, self._extra_path_wp_lookup_table \
+                    = self.pathfinder.find_extra_path(self._opt_path, car.cur_tile,
+                                                      car.base.next_waypoint_index)
+                print 'EXTRA_PATH:'
+                pprint(self._extra_path)
+                self.is_on_extra_path = True
+                # from the prev_wp to the new extra tile chain is always simple
+                idx = self._find_tile_in_path(car.cur_tile,
+                                              self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1])
+                self._prev_path_tile_idx = idx
+                assert idx is not None
 
         path = self._get_path()
         if path[idx].is_waypoint and self.is_on_extra_path:
