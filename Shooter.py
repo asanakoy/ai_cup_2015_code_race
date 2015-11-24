@@ -86,8 +86,8 @@ def should_shoot(me, world, game):
 
             time = L_1 / game.washer_initial_speed
             max_speed = 30.5
-            time_to_accelerate = min(time, (max_speed - target_speed_module) / 0.20)
-            enemy_path = (2.0 * target_speed_module + time_to_accelerate * 0.20) / 2.0 * time_to_accelerate
+            time_to_accelerate = min(time, (max_speed - target_speed_module) / 0.25)
+            enemy_path = (2.0 * target_speed_module + time_to_accelerate * 0.25) / 2.0 * time_to_accelerate
             if time - time_to_accelerate > 0:
                 enemy_path += (time - time_to_accelerate) * max_speed
 
