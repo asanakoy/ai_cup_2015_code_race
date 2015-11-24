@@ -104,7 +104,7 @@ def should_shoot(me, world, game):
 
             if np.dot(v1, my_dir) > 0.0 and np.dot(v2, dir) > 0.0 and target_speed_module > 9.0 \
                     and L_1 < game.track_tile_size * 6.0 and (enemy_path - 35) <= L_2 <= (enemy_path + 35) and \
-                    (abs(car.wheel_turn) < 0.5 or enemy_path < 1.0 * game.track_tile_size) and \
+                    (abs(car.wheel_turn) < 0.3 or enemy_path < 1.0 * game.track_tile_size) and \
                     meet_tile_type != TileType.UNKNOWN and meet_tile_type != TileType.EMPTY:
                 return True
             else:
