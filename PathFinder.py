@@ -55,7 +55,7 @@ def _find_path(graph, start_point, prev, end_point):
     :return: path from start_point to end_point. Each point is linear index
     """
     # print start_point, prev, end_point
-    n = len(graph)gst
+    n = len(graph)
     q = deque()
     q.appendleft(start_point)
     visited = n * [False]
