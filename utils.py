@@ -1,4 +1,5 @@
 from math import *
+from model.Move import Move
 
 __author__ = 'artem'
 
@@ -58,3 +59,10 @@ def tileTypeToStr(t):
         return "LEFT_BOTTOM_CORNER"
     if t == TileType.RIGHT_BOTTOM_CORNER:
         return "RIGHT_BOTTOM_CORNER"
+
+def move_to_str(move):
+    """
+    :type move: Move
+    """
+    return 'MOVE: EP(%d) BRAKE(%d), SHOOT(%d), OIL(%d), WT(%.16f)' % (move.engine_power,
+         move.brake, move.throw_projectile, move.spill_oil, move.wheel_turn)
