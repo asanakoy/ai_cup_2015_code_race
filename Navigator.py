@@ -40,15 +40,21 @@ class Navigator:
         return self._opt_path
 
     # Invariant: between two waypoints int he optimal path the chain
-    # is always simple (each point occurs on;y one time).
-    # In extra path the chain can contain duplicate points
-    def _find_tile_in_path(self, tile, last_pathtile_idx):
+    # is always simple (each point occurs only one time).
+    # In extra path the chain can contain duplicate points.
+    def _find_tile_in_path(self, tile, last_wp_path_index, next_wp_path_index):
+        """
+        Find index of the til in the path. Search from the last visited waypoint (inclusevly) to the next scheduled waypoint(inclusevely)
+        """
         assert type(tile) is tuple
         path = self._get_path()
         assert path is not None
 
-        indices = range(last_pathtile_idx, len(path)) + [0]
-        for i in indices:
+        if last_wp_path_index > next_wp_path_index:
+            indices = range(last_wp_path_index, len(path)) + range(0, next_wp_path_index + 1)
+        else:
+            indices = range(last_wp_path_index, next_wp_path_index + 1)
+        for i in indices[::-1]:  # search from the last to the first, because we don't wont to go two times by the same tiles
             if path[i].coord == tile:
                 return i
         return None
@@ -63,7 +69,7 @@ class Navigator:
         if self._opt_path is None:
             self._opt_path, self._opt_path_wp_lookup_table = self.pathfinder.find_full_opt_path()
 
-        idx = self._find_tile_in_path(car.cur_tile, self._prev_path_tile_idx)
+        idx = self._find_tile_in_path(car.cur_tile, self._opt_path_wp_lookup_table[car.base.next_waypoint_index - 1], self._opt_path_wp_lookup_table[car.base.next_waypoint_index])
 
         # if we strayed from the path
         if idx is None:
@@ -79,7 +85,7 @@ class Navigator:
                 self.is_on_extra_path = True
                 # from the prev_wp to the new extra tile chain is always simple
                 idx = self._find_tile_in_path(car.cur_tile,
-                                              self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1])
+                                              self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1],  self._extra_path_wp_lookup_table[car.base.next_waypoint_index])
                 self._prev_path_tile_idx = idx
                 assert idx is not None
 
