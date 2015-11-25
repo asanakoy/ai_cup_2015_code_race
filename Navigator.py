@@ -69,7 +69,11 @@ class Navigator:
         if self._opt_path is None:
             self._opt_path, self._opt_path_wp_lookup_table = self.pathfinder.find_full_opt_path()
 
-        idx = self._find_tile_in_path(car.cur_tile, self._opt_path_wp_lookup_table[car.base.next_waypoint_index - 1], self._opt_path_wp_lookup_table[car.base.next_waypoint_index])
+        if not self.is_on_extra_path:
+            idx = self._find_tile_in_path(car.cur_tile, self._opt_path_wp_lookup_table[car.base.next_waypoint_index - 1], self._opt_path_wp_lookup_table[car.base.next_waypoint_index])
+        else:
+            idx = self._find_tile_in_path(car.cur_tile,
+                                          self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1], self._extra_path_wp_lookup_table[car.base.next_waypoint_index])
 
         # if we strayed from the path
         if idx is None:
@@ -85,7 +89,7 @@ class Navigator:
                 self.is_on_extra_path = True
                 # from the prev_wp to the new extra tile chain is always simple
                 idx = self._find_tile_in_path(car.cur_tile,
-                                              self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1],  self._extra_path_wp_lookup_table[car.base.next_waypoint_index])
+                                              self._extra_path_wp_lookup_table[car.base.next_waypoint_index - 1], self._extra_path_wp_lookup_table[car.base.next_waypoint_index])
                 self._prev_path_tile_idx = idx
                 assert idx is not None
 

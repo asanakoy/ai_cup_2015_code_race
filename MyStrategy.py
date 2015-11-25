@@ -16,7 +16,7 @@ import Shooter
 class MyStrategy:
     SPEED_HEAP_SIZE = 20
     GO_BACK_CD = 100
-    DEBUG_LR = False
+    DEBUG_LR = True
 
     def __init__(self):
         self.tmp = None
@@ -101,6 +101,10 @@ class MyStrategy:
                            anchor_point[1],
                            25.0, self.green)
                 dbg.text(me.x, me.y, '%.2f' % self.mycar.speed, (0.0, 0.0, 0.0))
+
+                next_wp_tile = world.waypoints[me.next_waypoint_index]
+                next_wp_pos = ((next_wp_tile[0] + 0.5) * game.track_tile_size, (next_wp_tile[1] + 0.5) * game.track_tile_size)
+                dbg.fill_circle(next_wp_pos[0], next_wp_pos[1], 30, (1.0, 0.0, 0.0))
 
         if self.go_back:
             self.go_back -= 1
