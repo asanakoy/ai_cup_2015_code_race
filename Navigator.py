@@ -27,6 +27,7 @@ class Navigator:
         self.turn_type = None
         self.anchor_angle = None
         self.ladder_end_point = None
+        self.bonus_anchor_point = None
 
         # index of previous tile (previous tick) in the current path
         # Do not use outside of update() method
@@ -201,7 +202,11 @@ class Navigator:
                     closest_bonus_anchor = bonus_anchor
 
         if closest_bonus_anchor is not None:
-            anchor_point = closest_bonus_anchor
+            self.bonus_anchor_point = closest_bonus_anchor
+            # anchor_point = closest_bonus_anchor
+            # self.turn_type = TurnType.BONUS
+        else:
+            self.bonus_anchor_point = None
 
         return anchor_point
 

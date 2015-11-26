@@ -20,7 +20,7 @@ import Shooter
 class MyStrategy:
     SPEED_HEAP_SIZE = 20
     GO_BACK_CD = 100
-    DEBUG_LR = True
+    DEBUG_LR = False
 
     def __init__(self):
         self.tmp = None
@@ -99,6 +99,11 @@ class MyStrategy:
             angle_to_anchor_point = self.navigator.anchor_angle
         else:
             angle_to_anchor_point = me.get_angle_to(anchor_point[0], anchor_point[1])
+
+        if self.navigator.bonus_anchor_point is not None:
+            angle_to_anchor_point = me.get_angle_to(self.navigator.bonus_anchor_point[0], self.navigator.bonus_anchor_point[1])
+
+
         distance_to_anchor_point = me.get_distance_to(anchor_point[0], anchor_point[1])
         if self.tmp != me.next_waypoint_index:
             self.tmp = me.next_waypoint_index
