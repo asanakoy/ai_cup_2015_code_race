@@ -3,6 +3,7 @@ from DirectionExt import *
 from PathTile import PathTile
 from model.TileType import TileType
 from math import *
+from math_ex import *
 from collections import deque
 import copy
 # from pprint import pprint

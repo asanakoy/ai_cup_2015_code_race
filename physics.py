@@ -7,11 +7,13 @@ from model.CarType import CarType
 # from model.World import World
 # from model.TileType import TileType
 from math import *
+from math_ex import *
 from pprint import pprint
 # from random import random
 import numpy as np
-from ObjectLoader import *
+from scipy.spatial import distance
 from CarState import CarState
+import copy
 
 
 def sign(a):
@@ -66,35 +68,52 @@ class Physics:
         self.world = world
         self.game = game
 
+    def simulate(self, car_state_, ticks_count):
+        car_state = copy.deepcopy(car_state_)
+        start_pos = copy.deepcopy(car_state.pos)
+        while ticks_count:
+            self.calc(car_state)
+            ticks_count -= 1
+        dist = distance.euclidean(start_pos, car_state.pos)
+        return dist, car_state
 
-    def calc(self, car):
+
+    def calc(self, car_state):
         """
-        @type car: Car
+        Cahanges the argument car_state
+        @type car_state: CarState
         """
-        angle = car.angle
+        angle = car_state.angle
         dir = np.array([cos(angle), sin(angle)])
-        spd = np.array([car.speed_x, car.speed_y])
-        pos = np.array([car.x, car.y])
-        accel = dir * self.carAccel[car.type] * car.engine_power
-        angSpd = car.angular_speed
-        baseAngSpd = car.angular_speed  # APPROXIMATELY. WORK ONLY IF WE HAD NO BUMPINGS
+        spd = car_state.speed
+        pos = car_state.pos
+        if car_state.brake:
+            accel = 0.0
+            long_frict = self.crossFrict
+        else:
+            accel = dir * self.carAccel[car_state.type] * car_state.engine_power
+            long_frict = self.longFrict
+
+        angSpd = car_state.angular_speed
+        baseAngSpd = car_state.angular_speed  # APPROXIMATELY. WORK ONLY IF WE HAD NO BUMPINGS
 
         angSpd -= baseAngSpd  # <-- problemous substraction
-        baseAngSpd = self.carRotFactor * car.wheel_turn * np.dot(spd, dir)
+        baseAngSpd = self.carRotFactor * car_state.wheel_turn * np.dot(spd, dir)
         angSpd += baseAngSpd
+
 
         for i in xrange(Physics.PHYS_ITER):
             pos += spd * Physics.PHYS_DT
             spd += accel
             spd *= self.frictMul
             orthog_dir = np.array([-dir[1], dir[0]])
-            spd -= limit(np.dot(spd, dir), self.longFrict) * dir + limit(np.dot(spd, orthog_dir), self.crossFrict) * orthog_dir
+            spd -= limit(np.dot(spd, dir), long_frict) * dir + \
+                   limit(np.dot(spd, orthog_dir), self.crossFrict) * orthog_dir
 
             angle += angSpd * Physics.PHYS_DT
             dir = np.array([cos(angle), sin(angle)])
             angSpd = baseAngSpd + (angSpd - baseAngSpd) * self.rotFrictMul
 
-        car_state = CarState()
         car_state.angle = angle
         car_state.speed = spd
         car_state.angular_speed = angSpd
@@ -102,9 +121,25 @@ class Physics:
 
         return car_state
 
+    def calc_brake_distance(self, car_state_, speed_limit):
+        car_state = copy.deepcopy(car_state_)
+        car_state.brake = True
+        start_pos = copy.deepcopy(car_state.pos)
+        dir = np.array([cos(car_state.angle), sin(car_state.angle)])
+        speed = get_speed_projection(car_state.speed[0], car_state.speed[1], dir)
+        ticks = 0
+        while speed > speed_limit:
+            car_state = self.calc(car_state)
+            dir = np.array([cos(car_state.angle), sin(car_state.angle)])
+            speed = get_speed_projection(car_state.speed[0], car_state.speed[1], dir)
+            ticks += 1
+        brake_dist = distance.euclidean(start_pos, car_state.pos)
+        return ticks, brake_dist, car_state
 
-def main():
-    me, world, game = load_objects()
+
+def demo_calc():
+    import debug.ObjectLoader
+    me, world, game = debug.ObjectLoader.load_objects()
     print world.map_name
 
     ticks = 474 - 180
@@ -121,14 +156,26 @@ def main():
     me.engine_power = 1.0
     me.wheel_turn = 0
     me.speed_x = me.speed_y = 0.0
+    car_state = CarState.from_car(me)
 
     for i in xrange(181, 475):
-        car_state = phys.calc(me)
-        car_state.update_car(me)
+        car_state = phys.calc(car_state)
         print '[%d]' % i
         print car_state
+
+def demo_calc_brake_distance():
+    import debug.ObjectLoader
+    me, world, game = debug.ObjectLoader.load_objects()
+    phys = Physics(world, game)
+    car_state = CarState.from_car(me)
+    car_state.wheel_turn = 0.0
+    car_state.speed = np.array([-39.0311463976256405, 0.0])
+    speed_limit = 23.0
+    ticks, brake_dist, car_state = phys.calc_brake_distance(car_state, speed_limit)
+    print 'Ticks to break: %f Brake distance: %.16f' % (ticks, brake_dist)
+    print car_state
 
 
 
 if __name__ == '__main__':
-    main()
+    demo_calc_brake_distance()

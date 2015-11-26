@@ -1,13 +1,27 @@
 import numpy as np
+from model.CarType import CarType
 __author__ = 'artem'
 
 class CarState:
 
-    def __init__(self, angle=None, speed=None, angular_speed=None, pos=None):
+    def __init__(self, angle=None, speed=None, angular_speed=None, pos=None, wheel_turn=None,
+                 engine_power=None, engine_power_lim=None, brake=False, _type=CarType.BUGGY):
         self.angle = angle
         self.speed = speed
         self.angular_speed = angular_speed
         self.pos = pos
+        self.wheel_turn = wheel_turn
+        self.engine_power = engine_power
+        self.engine_power_lim = engine_power_lim
+        self.brake = brake
+        self.type = _type
+
+    @classmethod
+    def from_car(cls, car):
+        obj = CarState(car.angle, np.array([car.speed_x, car.speed_y]), car.angular_speed,
+                         np.array([car.x, car.y]), car.wheel_turn, car.engine_power)
+        obj.type = car.type
+        return obj
 
     def __str__(self):
         PREC = '.16'

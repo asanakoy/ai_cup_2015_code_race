@@ -2,6 +2,7 @@ from unittest import TestCase
 from MockWorld import MockWorld
 import PathFinder
 from utils import *
+from math_ex import *
 from PathTile import PathTile
 from DirectionExt import DirectionExt
 __author__ = 'artem'

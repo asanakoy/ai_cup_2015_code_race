@@ -10,6 +10,7 @@ class DebugStrategy:
      def __init__(self):
          self.mycar = None
          self.speed_list = None
+         self.brake = False
 
      def move(self, me, world, game, move):
         """
@@ -35,6 +36,10 @@ class DebugStrategy:
 
         move.engine_power = 1.0
 
-        # move.use_nitro = True
-        move.brake = False
+        move.use_nitro = True
+        if self.mycar.speed > 27.0:
+            print 'START BRAKING!'
+            self.brake = True
+
+        move.brake = self.brake
         print 'BRAKE(%d)', move.brake

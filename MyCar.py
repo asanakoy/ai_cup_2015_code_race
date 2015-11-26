@@ -2,6 +2,7 @@ __author__ = 'artem'
 
 from math import *
 from utils import *
+from math_ex import *
 from model.Car import Car
 
 class MyCar:
