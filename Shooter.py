@@ -1,6 +1,7 @@
 from math import *
 import numpy as np
 from model.TileType import TileType
+from model.CarType import CarType
 
 __author__ = 'artem'
 
@@ -37,8 +38,13 @@ def should_shoot(me, world, game):
             for i in xrange(2):
                 dir[i] = 0.0 if abs(dir[i]) < EPSILON else dir[i]
 
+            if me.base.type == CarType.BUGGY:
+                max_dist = 5.0 * game.track_tile_size
+            else:
+                max_dist = 1.6 * game.track_tile_size
+
             if (my_dir[1] == 0.0 and dir[1] == 0.0 and me.base.y == car.y) or (my_dir[0] == 0.0 and dir[0] == 0.0 and me.base.x == car.x):
-                if abs(me.base.get_angle_to_unit(car)) < pi / 90 and me.base.get_distance_to_unit(car) < 5.0 * game.track_tile_size:
+                if abs(me.base.get_angle_to_unit(car)) < pi / 90 and me.base.get_distance_to_unit(car) < max_dist:
                     return True
                 else:
                     continue
@@ -101,9 +107,13 @@ def should_shoot(me, world, game):
             # print 'Target: hp(%.2f) WT(%.2f) SP_MODULE(%.2f) ANGLE(%.2f)' % (car.durability, car.wheel_turn, target_speed_module, car.angle)
 
             #############
+            if me.base.type == CarType.BUGGY:
+                max_dist = 6.0 * game.track_tile_size
+            else:
+                max_dist = 2.0 * game.track_tile_size
 
             if np.dot(v1, my_dir) > 0.0 and np.dot(v2, dir) > 0.0 and target_speed_module > 9.0 \
-                    and L_1 < game.track_tile_size * 6.0 and (enemy_path - 35) <= L_2 <= (enemy_path + 35) and \
+                    and L_1 < max_dist and (enemy_path - 35) <= L_2 <= (enemy_path + 35) and \
                     (abs(car.wheel_turn) < 0.3 or enemy_path < 1.0 * game.track_tile_size) and \
                     meet_tile_type != TileType.UNKNOWN and meet_tile_type != TileType.EMPTY:
                 return True
