@@ -1,0 +1,1 @@
+Strategy for controlling a car in the AI challenge Russian AI Cup 2015 (http://russianaicup.ru/).
